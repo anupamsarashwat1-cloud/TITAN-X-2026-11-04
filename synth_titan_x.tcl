@@ -1,0 +1,1 @@
+scripts/synth_titan_x.tcl

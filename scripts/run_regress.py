@@ -37,7 +37,7 @@ def rtl_files():
                         rtl.append(str(p))
     # Append canonical BFMs if present
     bfms = sorted(
-        str(p) for p in REPO.rglob("bfm/*.v")
+        str(p.resolve()) for p in REPO.rglob("bfm/*.v")
         if not any(x in p.parts for x in EXCLUDE_DIRS)
     )
     for b in bfms:
@@ -49,7 +49,7 @@ def rtl_files():
 def tb_files():
     """Discover all canonical unique testbenches, preferring deepest module path for duplicates."""
     raw_tbs = sorted(
-        p for p in REPO.rglob("tb_*.v")
+        p.resolve() for p in REPO.rglob("tb_*.v")
         if not any(x in p.parts for x in EXCLUDE_DIRS)
     )
     tb_by_stem = {}

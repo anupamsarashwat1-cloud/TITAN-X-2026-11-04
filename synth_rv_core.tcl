@@ -1,0 +1,1 @@
+scripts/synth_rv_core.tcl

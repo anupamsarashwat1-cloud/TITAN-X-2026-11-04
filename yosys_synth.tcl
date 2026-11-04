@@ -1,0 +1,1 @@
+scripts/yosys_synth.tcl

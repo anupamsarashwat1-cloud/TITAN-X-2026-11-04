@@ -1,0 +1,6 @@
+[submodule "verification/vip/verilog-axi"]
+	path = verification/vip/verilog-axi
+	url = https://github.com/alexforencich/verilog-axi.git
+[submodule "verification/vip/verilog-pcie"]
+	path = verification/vip/verilog-pcie
+	url = https://github.com/alexforencich/verilog-pcie.git
