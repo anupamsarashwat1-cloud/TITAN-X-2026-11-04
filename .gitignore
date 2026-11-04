@@ -1,0 +1,18 @@
+# Simulation artifacts
+*.vvp
+*.vcd
+*.log
+!artifacts/qualification/logs/*.log
+a.out
+sim_build/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Editor & OS files
+*.swp
+*.swo
+*~
+.DS_Store
+verification/coverage/obj_dir/

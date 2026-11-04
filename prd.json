@@ -1,0 +1,648 @@
+{
+  "project_metadata": {
+    "title": "SMVDU TITAN-X Microprocessor 7-Phase Advanced Verification & Comprehensive ASIC/SoC Sign-off",
+    "standard": "RISC-V RV64GC (RV64IMAFDC)",
+    "privilege_specification": "RISC-V Privileged Architecture v1.12 (M/S/U Modes)",
+    "mmu_architecture": "Sv39 3-Level Radix Tree (39-bit VA, 38-bit PA, 4KB/2MB/1GB Pages)",
+    "target_technology": "SCL 180nm Bulk CMOS / Nangate45 Open-Cell Library",
+    "system_topology": "5-Hart Heterogeneous Multi-Core SoC (4x RV64GC App Harts + 1x RV64IMAC Security Hart)",
+    "clock_domains": {
+      "core_clk": {
+        "freq": "100-200 MHz",
+        "source": "Internal PLL / Clock Tree",
+        "consumers": [
+          "u_core[0..3]",
+          "u_monitor",
+          "rv_mmu",
+          "rv_ptw",
+          "rv_dcache",
+          "rv_icache"
+        ]
+      },
+      "ddr_phy_clk": {
+        "freq": "400 MHz",
+        "source": "External DDR4 Crystal",
+        "consumers": [
+          "ddr_ctrl_top",
+          "ddr_phy_if",
+          "ddr_scheduler"
+        ]
+      },
+      "apb_clk": {
+        "freq": "25 MHz",
+        "source": "System Prescaler /4",
+        "consumers": [
+          "uart_16550",
+          "gpio_ctrl",
+          "spi_master",
+          "i2c_master",
+          "watchdog_timer",
+          "rtc"
+        ]
+      },
+      "tmds_pixel_clk": {
+        "freq": "74.25-148.5 MHz",
+        "source": "Video Display PLL",
+        "consumers": [
+          "hdmi_ctrl",
+          "isp_pipeline",
+          "mipi_csi2_rx",
+          "vdma"
+        ]
+      },
+      "ulpi_clk": {
+        "freq": "60 MHz",
+        "source": "External USB PHY",
+        "consumers": [
+          "usb_otg"
+        ]
+      },
+      "pcie_ref_clk": {
+        "freq": "100 MHz",
+        "source": "PCIe Differential Clock",
+        "consumers": [
+          "pcie_top",
+          "pcie_pipe_if"
+        ]
+      },
+      "gem_tx_rx_clk": {
+        "freq": "125 MHz",
+        "source": "RGMII / SGMII PHY",
+        "consumers": [
+          "gem_ethernet",
+          "gem_sgmii_pcs"
+        ]
+      }
+    },
+    "reset_domains": {
+      "rst_n": {
+        "type": "Asynchronous Active-Low Power-On Reset",
+        "sync_mechanism": "2-stage reset_sync flop ladder"
+      },
+      "core_rst_n": {
+        "type": "Synchronous Core Reset",
+        "controller": "Root-of-Trust secure_boot releasing upon boot.mem validation"
+      },
+      "periph_rst_n": {
+        "type": "Synchronous Peripheral Reset",
+        "controller": "APB bridge software reset registers"
+      }
+    },
+    "verification_objective": "Mathematical & dynamic completeness: 0 lint warnings, clean SCL 180nm synthesis, SVA formal bounds, UVM random testing, power/coverage sign-off",
+    "generated_timestamp": "2026-10-27T13:55:00+05:30",
+    "crew_agents": [
+      "GSD-Orchestrator",
+      "Roo-Code-Browser",
+      "Ralph-Loop-Agent",
+      "CodeRabbit-Auditor"
+    ]
+  },
+  "seven_phase_mission_specification": {
+    "Phase_1_Blueprint_and_Token_Planning": {
+      "status": "COMPLETED",
+      "deliverable": "prd.json & progress.txt",
+      "description": "Full module dependency matrix, clock/reset bindings, operational pinouts, and formal invariant definitions"
+    },
+    "Phase_2_Lint_and_Gate_Synthesis": {
+      "status": "READY_FOR_EXECUTION",
+      "tools": [
+        "Verilator 5.020",
+        "Yosys 0.33"
+      ],
+      "deliverable": "Zero-warning lint sign-off & SCL 180nm logic area/cell estimation",
+      "actions": [
+        "Run verilator --lint-only -Wall on the entire RTL tree and refactor any synthesizable violations to 0 warnings",
+        "Execute Yosys gate-level synthesis exploration on titan_x_top and rv_core_top, logging gate counts and cell areas to progress.txt"
+      ]
+    },
+    "Phase_3_Formal_Verification_and_ABV": {
+      "status": "PLANNED",
+      "tools": [
+        "yosys-smtbmc",
+        "z3",
+        "SymbiYosys / SVA"
+      ],
+      "deliverable": "verification_report.md with formal proofs and dynamic simulation delta analysis",
+      "actions": [
+        "Author SystemVerilog Assertions (SVA) for pipeline hazard invariants, cache coherency, and bus handshakes",
+        "Perform SMT-BMC proofs with z3 solver for safety, liveness, and absence of deadlock"
+      ]
+    },
+    "Phase_4_UVM_Architecture_and_Constrained_Random": {
+      "status": "PLANNED",
+      "framework": "SystemVerilog TLM / UVM Agent Framework",
+      "deliverable": "verification/uvm_env/ with Driver, Monitor, Sequencer, Scoreboard, and Random Stimulus Generator",
+      "actions": [
+        "Develop Transaction-Level Modeling components for AXI4, APB, and CPU Memory Interfaces",
+        "Implement constrained-random packet generation to stress-test pipeline corner cases"
+      ]
+    },
+    "Phase_5_Power_Aware_and_Coverage_Analysis": {
+      "status": "PLANNED",
+      "deliverable": "Coverage database (Statement, Branch, Toggle) and Mock PMU power state logs",
+      "actions": [
+        "Instrument dynamic simulator for code & toggle coverage extraction",
+        "Implement power domain state machine simulating sleep, wake, and clock-gating retention"
+      ]
+    },
+    "Phase_6_Performance_and_Firmware_Boot": {
+      "status": "PLANNED",
+      "deliverable": "Cycle-accurate benchmark reports, memory latency metrics, and boot UART transcript",
+      "actions": [
+        "Load firmware.hex into boot ROM (0x10000) and execute baremetal startup across all harts",
+        "Measure execution cycles, CPI, cache hit rates, and bus stall penalties"
+      ]
+    },
+    "Phase_7_Telemetry_and_CodeRabbit_Signoff": {
+      "status": "PLANNED",
+      "deliverable": "Authentic GTKWave waveform screenshots in verification_waves/ and CodeRabbit PR review",
+      "actions": [
+        "Automate GTKWave on DISPLAY=:0 using Tcl scripts and capture screenshots via scrot",
+        "Execute CodeRabbit architectural review for structural integrity, CDC safety, and timing hygiene"
+      ]
+    }
+  },
+  "module_dependency_tree": {
+    "Level_0_Leaf_Execution_and_Arithmetic": [
+      {
+        "module": "rv_regfile",
+        "file": "backend/rv_regfile/rv_regfile.v",
+        "dependencies": []
+      },
+      {
+        "module": "rv_csr",
+        "file": "backend/rv_csr/rv_csr.v",
+        "dependencies": [
+          "common/isa_pkg.vh",
+          "common/params.vh"
+        ]
+      },
+      {
+        "module": "rv_fpu",
+        "file": "backend/rv_fpu/rv_fpu.v",
+        "dependencies": [
+          "common/params.vh"
+        ]
+      },
+      {
+        "module": "rv_bpu",
+        "file": "frontend/rv_bpu/rv_bpu.v",
+        "dependencies": [
+          "common/params.vh"
+        ]
+      },
+      {
+        "module": "rv_tlb",
+        "file": "backend/rv_tlb/rv_tlb.v",
+        "dependencies": [
+          "common/params.vh"
+        ]
+      },
+      {
+        "module": "rv_pmp",
+        "file": "backend/rv_pmp/rv_pmp.v",
+        "dependencies": [
+          "common/isa_pkg.vh",
+          "common/params.vh"
+        ]
+      }
+    ],
+    "Level_1_Core_Pipeline_Stages": [
+      {
+        "module": "rv_fetch",
+        "file": "frontend/rv_fetch/rv_fetch.v",
+        "dependencies": [
+          "rv_bpu"
+        ]
+      },
+      {
+        "module": "rv_decode",
+        "file": "frontend/rv_decode/rv_decode.v",
+        "dependencies": [
+          "common/isa_constants.vh",
+          "common/isa_pkg.vh"
+        ]
+      },
+      {
+        "module": "rv_execute",
+        "file": "backend/rv_execute/rv_execute.v",
+        "dependencies": [
+          "rv_fpu",
+          "common/isa_constants.vh"
+        ]
+      },
+      {
+        "module": "rv_mem",
+        "file": "backend/rv_mem/rv_mem.v",
+        "dependencies": [
+          "common/params.vh"
+        ]
+      },
+      {
+        "module": "rv_writeback",
+        "file": "backend/rv_writeback/rv_writeback.v",
+        "dependencies": [
+          "common/params.vh"
+        ]
+      }
+    ],
+    "Level_2_Memory_and_System_Subsystems": [
+      {
+        "module": "rv_icache",
+        "file": "frontend/rv_icache/rv_icache.v",
+        "dependencies": [
+          "common/params.vh"
+        ]
+      },
+      {
+        "module": "rv_dcache",
+        "file": "backend/rv_dcache/rv_dcache.v",
+        "dependencies": [
+          "common/params.vh"
+        ]
+      },
+      {
+        "module": "rv_ptw",
+        "file": "backend/rv_ptw/rv_ptw.v",
+        "dependencies": [
+          "common/params.vh"
+        ]
+      },
+      {
+        "module": "rv_mmu",
+        "file": "backend/rv_mmu/rv_mmu.v",
+        "dependencies": [
+          "rv_tlb",
+          "rv_ptw",
+          "rv_pmp"
+        ]
+      },
+      {
+        "module": "clint",
+        "file": "backend/clint/clint.v",
+        "dependencies": [
+          "common/params.vh"
+        ]
+      },
+      {
+        "module": "plic",
+        "file": "backend/plic/plic.v",
+        "dependencies": [
+          "common/params.vh"
+        ]
+      },
+      {
+        "module": "rv_debug",
+        "file": "backend/rv_debug/rv_debug.v",
+        "dependencies": [
+          "common/params.vh"
+        ]
+      }
+    ],
+    "Level_3_Integrated_Cores": [
+      {
+        "module": "rv_core_top",
+        "file": "backend/rv_core_top/rv_core_top.v",
+        "dependencies": [
+          "rv_fetch",
+          "rv_decode",
+          "rv_execute",
+          "rv_mem",
+          "rv_writeback",
+          "rv_regfile",
+          "rv_csr"
+        ]
+      },
+      {
+        "module": "rv_monitor_core",
+        "file": "backend/rv_monitor_core/rv_monitor_core.v",
+        "dependencies": [
+          "rv_decode",
+          "rv_execute",
+          "rv_regfile",
+          "rv_csr"
+        ]
+      }
+    ],
+    "Level_4_Interconnect_Memory_and_Peripherals": [
+      {
+        "module": "axi4_crossbar",
+        "file": "interconnect/axi4_crossbar/axi4_crossbar.v",
+        "dependencies": [
+          "common/params.vh"
+        ]
+      },
+      {
+        "module": "ddr_ctrl_top",
+        "file": "memory/ddr_ctrl_top/ddr_ctrl_top.v",
+        "dependencies": [
+          "ddr_scheduler",
+          "ddr_phy_if"
+        ]
+      },
+      {
+        "module": "l2_cache_top",
+        "file": "memory/l2_cache_top/l2_cache_top.v",
+        "dependencies": [
+          "l2_cache_ctrl",
+          "l2_tag_array",
+          "l2_data_array",
+          "l2_snoop_filter"
+        ]
+      },
+      {
+        "module": "peripherals_cluster",
+        "file": "peripherals/",
+        "dependencies": [
+          "apb_bridge",
+          "ahb_to_apb",
+          "axi4_to_ahb"
+        ]
+      },
+      {
+        "module": "security_cluster",
+        "file": "security/",
+        "dependencies": [
+          "secure_boot",
+          "envm_ctrl",
+          "ecdsa_engine",
+          "drbg"
+        ]
+      }
+    ],
+    "Level_5_Master_SoC_Top": [
+      {
+        "module": "titan_x_top",
+        "file": "top/titan_x_top/titan_x_top.v",
+        "dependencies": [
+          "rv_core_top",
+          "rv_monitor_core",
+          "axi4_crossbar",
+          "l2_cache_top",
+          "ddr_ctrl_top",
+          "axi_rom",
+          "clint",
+          "plic",
+          "rv_debug",
+          "peripherals",
+          "security",
+          "video",
+          "storage"
+        ]
+      }
+    ]
+  },
+  "module_pinouts_and_formal_constraints": {
+    "rv_core_top": {
+      "clock_domain": "core_clk (100-200 MHz)",
+      "reset_domain": "rst_n (asynchronous assert, synchronous release)",
+      "primary_pinout": [
+        {
+          "pin": "clk",
+          "dir": "input",
+          "width": 1,
+          "desc": "Core clock"
+        },
+        {
+          "pin": "rst_n",
+          "dir": "input",
+          "width": 1,
+          "desc": "Active-low reset"
+        },
+        {
+          "pin": "irq_m_ext",
+          "dir": "input",
+          "width": 1,
+          "desc": "PLIC machine external interrupt"
+        },
+        {
+          "pin": "irq_m_timer",
+          "dir": "input",
+          "width": 1,
+          "desc": "CLINT machine timer interrupt"
+        },
+        {
+          "pin": "irq_m_soft",
+          "dir": "input",
+          "width": 1,
+          "desc": "CLINT machine software interrupt"
+        },
+        {
+          "pin": "imem_arvalid",
+          "dir": "output",
+          "width": 1,
+          "desc": "Instruction fetch address valid"
+        },
+        {
+          "pin": "imem_arready",
+          "dir": "input",
+          "width": 1,
+          "desc": "Instruction fetch address ready"
+        },
+        {
+          "pin": "imem_araddr",
+          "dir": "output",
+          "width": 40,
+          "desc": "Instruction fetch physical address"
+        },
+        {
+          "pin": "imem_rvalid",
+          "dir": "input",
+          "width": 1,
+          "desc": "Instruction read data valid"
+        },
+        {
+          "pin": "imem_rready",
+          "dir": "output",
+          "width": 1,
+          "desc": "Instruction read data ready"
+        },
+        {
+          "pin": "imem_rdata",
+          "dir": "input",
+          "width": 64,
+          "desc": "Fetched 64-bit instruction bundle"
+        },
+        {
+          "pin": "dmem_awvalid",
+          "dir": "output",
+          "width": 1,
+          "desc": "Data bus write address valid"
+        },
+        {
+          "pin": "dmem_awaddr",
+          "dir": "output",
+          "width": 40,
+          "desc": "Data bus write address"
+        },
+        {
+          "pin": "dmem_wvalid",
+          "dir": "output",
+          "width": 1,
+          "desc": "Data bus write data valid"
+        },
+        {
+          "pin": "dmem_wdata",
+          "dir": "output",
+          "width": 64,
+          "desc": "Data bus write data"
+        },
+        {
+          "pin": "dmem_wstrb",
+          "dir": "output",
+          "width": 8,
+          "desc": "Data bus byte enable strobes"
+        },
+        {
+          "pin": "dmem_arvalid",
+          "dir": "output",
+          "width": 1,
+          "desc": "Data bus read address valid"
+        },
+        {
+          "pin": "dmem_araddr",
+          "dir": "output",
+          "width": 40,
+          "desc": "Data bus read address"
+        },
+        {
+          "pin": "dmem_rvalid",
+          "dir": "input",
+          "width": 1,
+          "desc": "Data bus read data valid"
+        },
+        {
+          "pin": "dmem_rdata",
+          "dir": "input",
+          "width": 64,
+          "desc": "Data bus read payload"
+        }
+      ],
+      "formal_sva_invariants": [
+        {
+          "name": "SVA_NO_DUAL_WRITE",
+          "prop": "assert property (@(posedge clk) !(dmem_awvalid && dmem_arvalid))",
+          "desc": "AXI-Lite master port enforces non-overlapping read/write requests"
+        },
+        {
+          "name": "SVA_HANDSHAKE_STABLE",
+          "prop": "assert property (@(posedge clk) imem_arvalid && !imem_arready |=> $stable(imem_araddr))",
+          "desc": "Address must hold constant until ready handshake completes"
+        },
+        {
+          "name": "SVA_PC_ALIGNMENT",
+          "prop": "assert property (@(posedge clk) imem_arvalid |-> (imem_araddr[1:0] == 2b00))",
+          "desc": "Instruction fetch addresses must be 4-byte aligned in RV64G mode"
+        }
+      ]
+    },
+    "rv_pmp": {
+      "clock_domain": "core_clk",
+      "reset_domain": "rst_n",
+      "primary_pinout": [
+        {
+          "pin": "paddr",
+          "dir": "input",
+          "width": 38,
+          "desc": "Access physical address"
+        },
+        {
+          "pin": "check_r",
+          "dir": "input",
+          "width": 1,
+          "desc": "Read permission check strobe"
+        },
+        {
+          "pin": "check_w",
+          "dir": "input",
+          "width": 1,
+          "desc": "Write permission check strobe"
+        },
+        {
+          "pin": "check_x",
+          "dir": "input",
+          "width": 1,
+          "desc": "Execute permission check strobe"
+        },
+        {
+          "pin": "priv_mode",
+          "dir": "input",
+          "width": 2,
+          "desc": "Execution privilege mode (2b11=M, 2b01=S, 2b00=U)"
+        },
+        {
+          "pin": "check_en",
+          "dir": "input",
+          "width": 1,
+          "desc": "Active check enable"
+        },
+        {
+          "pin": "pmp_fault",
+          "dir": "output",
+          "width": 1,
+          "desc": "Access violation fault flag"
+        }
+      ],
+      "formal_sva_invariants": [
+        {
+          "name": "SVA_M_MODE_BYPASS",
+          "prop": "assert property (@(posedge clk) (check_en && priv_mode == 2b11 && !any_locked_match) |-> !pmp_fault)",
+          "desc": "Unlocked M-mode accesses always bypass PMP checks"
+        },
+        {
+          "name": "SVA_U_MODE_DEFAULT_DENY",
+          "prop": "assert property (@(posedge clk) (check_en && priv_mode == 2b00 && !any_match) |-> pmp_fault)",
+          "desc": "User mode accesses with no matching PMP entries default to fault"
+        }
+      ]
+    },
+    "axi4_crossbar": {
+      "clock_domain": "core_clk / ddr_phy_clk",
+      "reset_domain": "rst_n",
+      "primary_pinout": [
+        {
+          "pin": "aclk",
+          "dir": "input",
+          "width": 1,
+          "desc": "Interconnect system clock"
+        },
+        {
+          "pin": "aresetn",
+          "dir": "input",
+          "width": 1,
+          "desc": "Active-low reset"
+        },
+        {
+          "pin": "m_axi_awaddr",
+          "dir": "output",
+          "width": 40,
+          "desc": "Master crossbar output address"
+        },
+        {
+          "pin": "m_axi_wdata",
+          "dir": "output",
+          "width": 64,
+          "desc": "Master crossbar output data payload"
+        },
+        {
+          "pin": "m_axi_wvalid",
+          "dir": "output",
+          "width": 1,
+          "desc": "Master write data strobe"
+        }
+      ],
+      "formal_sva_invariants": [
+        {
+          "name": "SVA_MUTEX_GRANT",
+          "prop": "assert property (@(posedge aclk) $onehot0(master_grants))",
+          "desc": "Arbiter grants at most one master access to a slave channel at any cycle"
+        },
+        {
+          "name": "SVA_NO_STARVATION",
+          "prop": "assert property (@(posedge aclk) master_req[*8] |-> ##[1:16] master_grant)",
+          "desc": "Round-robin arbiter guarantees forward progress within 16 cycles"
+        }
+      ]
+    }
+  }
+}
