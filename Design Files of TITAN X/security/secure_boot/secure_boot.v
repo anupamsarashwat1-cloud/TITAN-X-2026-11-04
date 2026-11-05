@@ -32,38 +32,76 @@ module secure_boot (
     // -------------------------------------------------------
     // Constants
     // -------------------------------------------------------
+    // -------------------------------------------------------
+    // Constants
+    // -------------------------------------------------------
     localparam [31:0] BOOT_MAGIC  = 32'h5449544E; // "TITN" in ASCII
     localparam [31:0] AUTH_PUBKEY = 32'hCAFE_F00D; // Authorized Root Public Key ID
 
-    // NIST FIPS 186-4 P-256 Authorized Root-of-Trust Public Key Coordinates (Immutable Trust Anchor)
-    localparam [255:0] ROT_PUBKEY_QX = 256'h26F4FA43_1A2BEB66_46D953CA_332BC722_911D9B05_E5D92476_06330B61_E6703F52;
-    localparam [255:0] ROT_PUBKEY_QY = 256'h9E9689C9_49B37A0B_342F6CAC_9B4E5440_A727CEE4_055285CD_A6216084_643D6E4F;
+    // OTP eFuse Controller Instance (Dynamic Multi-Key Trust Anchor & Anti-Rollback)
+    wire [1:0]   efuse_slot_idx;
+    wire [255:0] efuse_rot_qx, efuse_rot_qy;
+    wire         efuse_slot_revoked;
+    wire [3:0]   efuse_revocation_mask;
+    wire [31:0]  efuse_security_counter;
+    reg  [31:0]  efuse_update_counter_val;
+    reg          efuse_update_counter_en;
+    reg  [1:0]   key_slot_reg;
+    reg  [31:0]  img_sec_version_reg;
+
+    assign efuse_slot_idx = key_slot_reg;
+
+    wire efuse_apb_sel = psel && (paddr[7:4] == 4'h1);
+    wire [31:0] efuse_prdata;
+
+    efuse_ctrl u_efuse (
+        .clk(clk),
+        .rst_n(rst_n),
+        .paddr({28'h0, paddr[3:0]}),
+        .psel(efuse_apb_sel),
+        .penable(penable),
+        .pwrite(pwrite),
+        .pwdata(pwdata),
+        .prdata(efuse_prdata),
+        .pready(),
+        .pslverr(),
+        .hw_slot_idx(efuse_slot_idx),
+        .hw_rot_qx(efuse_rot_qx),
+        .hw_rot_qy(efuse_rot_qy),
+        .hw_slot_revoked(efuse_slot_revoked),
+        .hw_revocation_mask(efuse_revocation_mask),
+        .hw_security_counter(efuse_security_counter),
+        .hw_update_counter_val(efuse_update_counter_val),
+        .hw_update_counter_en(efuse_update_counter_en)
+    );
 
     function [31:0] rot_qx_word;
-        input [2:0] idx;
+        input [255:0] qx;
+        input [2:0]   idx;
         case (idx)
-            3'd0: rot_qx_word = ROT_PUBKEY_QX[255:224];
-            3'd1: rot_qx_word = ROT_PUBKEY_QX[223:192];
-            3'd2: rot_qx_word = ROT_PUBKEY_QX[191:160];
-            3'd3: rot_qx_word = ROT_PUBKEY_QX[159:128];
-            3'd4: rot_qx_word = ROT_PUBKEY_QX[127:96];
-            3'd5: rot_qx_word = ROT_PUBKEY_QX[95:64];
-            3'd6: rot_qx_word = ROT_PUBKEY_QX[63:32];
-            3'd7: rot_qx_word = ROT_PUBKEY_QX[31:0];
+            3'd0: rot_qx_word = qx[255:224];
+            3'd1: rot_qx_word = qx[223:192];
+            3'd2: rot_qx_word = qx[191:160];
+            3'd3: rot_qx_word = qx[159:128];
+            3'd4: rot_qx_word = qx[127:96];
+            3'd5: rot_qx_word = qx[95:64];
+            3'd6: rot_qx_word = qx[63:32];
+            3'd7: rot_qx_word = qx[31:0];
         endcase
     endfunction
 
     function [31:0] rot_qy_word;
-        input [2:0] idx;
+        input [255:0] qy;
+        input [2:0]   idx;
         case (idx)
-            3'd0: rot_qy_word = ROT_PUBKEY_QY[255:224];
-            3'd1: rot_qy_word = ROT_PUBKEY_QY[223:192];
-            3'd2: rot_qy_word = ROT_PUBKEY_QY[191:160];
-            3'd3: rot_qy_word = ROT_PUBKEY_QY[159:128];
-            3'd4: rot_qy_word = ROT_PUBKEY_QY[127:96];
-            3'd5: rot_qy_word = ROT_PUBKEY_QY[95:64];
-            3'd6: rot_qy_word = ROT_PUBKEY_QY[63:32];
-            3'd7: rot_qy_word = ROT_PUBKEY_QY[31:0];
+            3'd0: rot_qy_word = qy[255:224];
+            3'd1: rot_qy_word = qy[223:192];
+            3'd2: rot_qy_word = qy[191:160];
+            3'd3: rot_qy_word = qy[159:128];
+            3'd4: rot_qy_word = qy[127:96];
+            3'd5: rot_qy_word = qy[95:64];
+            3'd6: rot_qy_word = qy[63:32];
+            3'd7: rot_qy_word = qy[31:0];
         endcase
     endfunction
 
@@ -187,6 +225,11 @@ module secure_boot (
             ecdsa_pwrite  <= 1'b0;
             ecdsa_paddr   <= 32'h0;
             ecdsa_pwdata  <= 32'h0;
+
+            key_slot_reg             <= 2'd0;
+            img_sec_version_reg      <= 32'd0;
+            efuse_update_counter_val <= 32'd0;
+            efuse_update_counter_en  <= 1'b0;
         end else begin
             case (state)
                 S_IDLE: begin
@@ -201,6 +244,10 @@ module secure_boot (
                     sha_penable   <= 1'b0;
                     ecdsa_psel    <= 1'b0;
                     ecdsa_penable <= 1'b0;
+                    key_slot_reg             <= 2'd0;
+                    img_sec_version_reg      <= 32'd0;
+                    efuse_update_counter_val <= 32'd0;
+                    efuse_update_counter_en  <= 1'b0;
                     state         <= S_READ_HEADER;
                 end
 
@@ -229,7 +276,27 @@ module secure_boot (
                             end
                         end else if (word_addr == 17'd2) begin
                             pubkey_id <= envm_rdata;
-                            if (envm_rdata != AUTH_PUBKEY) begin
+                            if (envm_rdata == AUTH_PUBKEY) begin
+                                key_slot_reg        <= 2'd0;
+                                img_sec_version_reg <= 32'd0;
+                                if (efuse_revocation_mask[0]) begin
+                                    auth_fail <= 1'b1;
+                                    state     <= S_HALT;
+                                end else if (32'd0 < efuse_security_counter) begin
+                                    auth_fail <= 1'b1;
+                                    state     <= S_HALT;
+                                end
+                            end else if (envm_rdata[15:4] == 12'hF00 && envm_rdata[3:2] == 2'b00) begin
+                                key_slot_reg        <= envm_rdata[1:0];
+                                img_sec_version_reg <= (envm_rdata[31:16] == 16'hCAFE) ? 32'd0 : {16'h0, envm_rdata[31:16]};
+                                if (efuse_revocation_mask[envm_rdata[1:0]]) begin
+                                    auth_fail <= 1'b1;
+                                    state     <= S_HALT;
+                                end else if (((envm_rdata[31:16] == 16'hCAFE) ? 32'd0 : {16'h0, envm_rdata[31:16]}) < efuse_security_counter) begin
+                                    auth_fail <= 1'b1;
+                                    state     <= S_HALT;
+                                end
+                            end else begin
                                 auth_fail <= 1'b1;
                                 state     <= S_HALT;
                             end
@@ -237,13 +304,13 @@ module secure_boot (
                             exp_digest[word_addr - 17'd3] <= envm_rdata;
                         end else if (word_addr >= 17'd11 && word_addr <= 17'd18) begin
                             pubkey_qx[word_addr - 17'd11] <= envm_rdata;
-                            if (envm_rdata != rot_qx_word((word_addr - 17'd11) & 17'd7)) begin
+                            if (envm_rdata != rot_qx_word(efuse_rot_qx, (word_addr - 17'd11) & 17'd7)) begin
                                 auth_fail <= 1'b1;
                                 state     <= S_HALT;
                             end
                         end else if (word_addr >= 17'd19 && word_addr <= 17'd26) begin
                             pubkey_qy[word_addr - 17'd19] <= envm_rdata;
-                            if (envm_rdata != rot_qy_word((word_addr - 17'd19) & 17'd7)) begin
+                            if (envm_rdata != rot_qy_word(efuse_rot_qy, (word_addr - 17'd19) & 17'd7)) begin
                                 auth_fail <= 1'b1;
                                 state     <= S_HALT;
                             end
@@ -375,10 +442,10 @@ module secure_boot (
                         ecdsa_pwdata <= computed_hash[ecdsa_load_idx];
                     end else if (ecdsa_load_idx < 6'd16) begin
                         ecdsa_paddr  <= 32'h0000_0200 + ((ecdsa_load_idx - 6'd8) << 2);
-                        ecdsa_pwdata <= rot_qx_word((ecdsa_load_idx - 6'd8) & 6'd7);
+                        ecdsa_pwdata <= rot_qx_word(efuse_rot_qx, (ecdsa_load_idx - 6'd8) & 6'd7);
                     end else if (ecdsa_load_idx < 6'd24) begin
                         ecdsa_paddr  <= 32'h0000_0220 + ((ecdsa_load_idx - 6'd16) << 2);
-                        ecdsa_pwdata <= rot_qy_word((ecdsa_load_idx - 6'd16) & 6'd7);
+                        ecdsa_pwdata <= rot_qy_word(efuse_rot_qy, (ecdsa_load_idx - 6'd16) & 6'd7);
                     end else if (ecdsa_load_idx < 6'd32) begin
                         ecdsa_paddr  <= 32'h0000_0300 + ((ecdsa_load_idx - 6'd24) << 2);
                         ecdsa_pwdata <= sig_r[ecdsa_load_idx - 6'd24];
@@ -462,7 +529,11 @@ module secure_boot (
                 end
 
                 S_SUCCESS: begin
-                    // Processor reset release
+                    // Processor reset release and monotonic counter update
+                    if (img_sec_version_reg > efuse_security_counter) begin
+                        efuse_update_counter_val <= img_sec_version_reg;
+                        efuse_update_counter_en  <= 1'b1;
+                    end
                 end
 
                 S_HALT: begin
@@ -482,7 +553,8 @@ module secure_boot (
     // -------------------------------------------------------
     assign pready  = 1'b1;
     assign pslverr = 1'b0;
-    assign prdata  = (paddr[7:0] == 8'h00) ? {boot_fail, boot_pass, 25'h0, state} :
+    assign prdata  = (paddr[7:4] == 4'h1)  ? efuse_prdata :
+                     (paddr[7:0] == 8'h00) ? {boot_fail, boot_pass, 25'h0, state} :
                      (paddr[7:0] == 8'h04) ? computed_hash[0] :
                      (paddr[7:0] == 8'h08) ? exp_digest[0] :
                      (paddr[7:0] == 8'h0C) ? {15'h0, word_addr} : 32'h0;
