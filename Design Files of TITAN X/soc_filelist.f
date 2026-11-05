@@ -55,6 +55,7 @@ peripherals/sha256_engine/sha256_engine.v
 peripherals/aes_engine/aes_engine.v
 security/ecdsa_engine/ecdsa_engine.v
 security/envm_ctrl/envm_ctrl.v
+security/efuse_ctrl/efuse_ctrl.v
 security/secure_boot/secure_boot.v
 peripherals/gem_sgmii_pcs/gem_sgmii_pcs.v
 peripherals/gem_ethernet/gem_ethernet.v
