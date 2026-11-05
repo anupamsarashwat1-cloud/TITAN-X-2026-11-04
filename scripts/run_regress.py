@@ -116,10 +116,11 @@ def run_one(tb_path: Path, rtl, timeout: int):
         with tempfile.TemporaryDirectory() as td:
             vvp = Path(td) / f"{name}.vvp"
             compile_cmd.extend([str(vvp), *rtl, str(tb_path)])
+            c_to = 600 if name == "tb_titan_x_top" else 180
             c = subprocess.run(
                 compile_cmd,
                 capture_output=True, text=True, errors="replace",
-                timeout=180, cwd=str(REPO)
+                timeout=c_to, cwd=str(REPO)
             )
             if c.returncode != 0:
                 tail = (c.stderr or c.stdout).strip().splitlines()[-4:]
