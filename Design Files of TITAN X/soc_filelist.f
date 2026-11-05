@@ -68,5 +68,6 @@ video/isp_pipeline/isp_pipeline.v
 video/vdma/vdma.v
 video/hdmi_ctrl/hdmi_ctrl.v
 top/axi_rom/axi_rom.v
+top/axi_sram/axi_sram.v
 top/titan_x_top/titan_x_top.v
 top/titan_x_top/tb_titan_x_top.v
