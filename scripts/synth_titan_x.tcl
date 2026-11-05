@@ -1,5 +1,5 @@
 # Yosys synthesis script for titan_x_top (SoC Top)
-read_verilog -Iincludes -sv \
+read_verilog -Iincludes -Icommon -sv \
     includes/stdcell_stubs.v \
     common/BUFX4/buf_macros.v \
     common/cdc_sync/cdc_sync.v \
@@ -57,6 +57,7 @@ read_verilog -Iincludes -sv \
     peripherals/aes_engine/aes_engine.v \
     security/ecdsa_engine/ecdsa_engine.v \
     security/envm_ctrl/envm_ctrl.v \
+    security/efuse_ctrl/efuse_ctrl.v \
     security/secure_boot/secure_boot.v \
     peripherals/gem_sgmii_pcs/gem_sgmii_pcs.v \
     peripherals/gem_ethernet/gem_ethernet.v \
@@ -70,8 +71,9 @@ read_verilog -Iincludes -sv \
     video/vdma/vdma.v \
     video/hdmi_ctrl/hdmi_ctrl.v \
     top/axi_rom/axi_rom.v \
-    top/titan_x_top/titan_x_top.v \
+    top/axi_sram/axi_sram.v \
+    top/titan_x_top/titan_x_top.v
 
-hierarchy -top titan_x_top
-synth -top titan_x_top
+hierarchy -check -top titan_x_top
+check
 stat

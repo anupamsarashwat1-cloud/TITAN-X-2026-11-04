@@ -1,5 +1,47 @@
 [
   {
+    "name": "tb_ecdsa_engine",
+    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/security/ecdsa_engine/tb_ecdsa_engine.v",
+    "verdict": "TIMEOUT",
+    "tail": []
+  },
+  {
+    "name": "tb_fresh_titan_x_top",
+    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/titan_x_top/tb_fresh_titan_x_top.v",
+    "verdict": "TIMEOUT",
+    "tail": []
+  },
+  {
+    "name": "tb_integ_peripherals",
+    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/titan_x_top/tb_integ_peripherals.v",
+    "verdict": "TIMEOUT",
+    "tail": []
+  },
+  {
+    "name": "tb_secure_boot",
+    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/security/secure_boot/tb_secure_boot.v",
+    "verdict": "TIMEOUT",
+    "tail": []
+  },
+  {
+    "name": "tb_secure_boot_crypto",
+    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/security/secure_boot/tb_secure_boot_crypto.v",
+    "verdict": "TIMEOUT",
+    "tail": []
+  },
+  {
+    "name": "tb_titan_x_performance",
+    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/verification/performance/tb_titan_x_performance.v",
+    "verdict": "TIMEOUT",
+    "tail": []
+  },
+  {
+    "name": "tb_titan_x_top",
+    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/titan_x_top/tb_titan_x_top.v",
+    "verdict": "TIMEOUT",
+    "tail": []
+  },
+  {
     "name": "tb_BUFX4",
     "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/common/BUFX4/tb_BUFX4.v",
     "verdict": "PASS",
@@ -82,9 +124,20 @@
     "verdict": "PASS",
     "tail": [
       "==============================",
-      "AXI_ROM VERDICT: \u2705 PASS \u2014 All 11 tests green",
+      "AXI_ROM VERDICT: PASS - All 15 tests green",
       "==============================",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/axi_rom/tb_axi_rom.v:149: $finish called at 196000 (1ps)"
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/axi_rom/tb_axi_rom.v:187: $finish called at 226000 (1ps)"
+    ]
+  },
+  {
+    "name": "tb_axi_sram",
+    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/axi_sram/tb_axi_sram.v",
+    "verdict": "PASS",
+    "tail": [
+      "==============================",
+      "AXI_SRAM VERDICT: PASS \u2014 All 9 tests green",
+      "==============================",
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/axi_sram/tb_axi_sram.v:209: $finish called at 295000 (1ps)"
     ]
   },
   {
@@ -209,14 +262,14 @@
     ]
   },
   {
-    "name": "tb_ecdsa_engine",
-    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/security/ecdsa_engine/tb_ecdsa_engine.v",
+    "name": "tb_efuse_ctrl",
+    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/security/efuse_ctrl/tb_efuse_ctrl.v",
     "verdict": "PASS",
     "tail": [
-      "ECDSA_ENGINE VERDICT: \u2705 PASS \u2014 All 6 genuine crypto scenarios verified",
-      "REGRESS_RESULT: PASS",
-      "==================================================================",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/security/ecdsa_engine/tb_ecdsa_engine.v:238: $finish called at 47117000 (1ps)"
+      "==============================",
+      "EFUSE_CTRL VERDICT: PASS \u2014 All 12 tests green",
+      "==============================",
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/security/efuse_ctrl/tb_efuse_ctrl.v:162: $finish called at 196000 (1ps)"
     ]
   },
   {
@@ -473,17 +526,6 @@
     ]
   },
   {
-    "name": "tb_fresh_titan_x_top",
-    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/titan_x_top/tb_fresh_titan_x_top.v",
-    "verdict": "PASS",
-    "tail": [
-      " Total Failed: 0",
-      "=======================================================",
-      "[ALL TESTS PASSED] titan_x_top 100% verified.",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/titan_x_top/tb_fresh_titan_x_top.v:256: $finish called at 16726000 (1ps)"
-    ]
-  },
-  {
     "name": "tb_gem_ethernet",
     "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/peripherals/gem_ethernet/tb_gem_ethernet.v",
     "verdict": "PASS",
@@ -557,7 +599,7 @@
       "------------------------------------------------",
       "MULTICORE_MESI: 19 checks, 0 errors",
       "REGRESS_RESULT: PASS",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/titan_x_top/tb_integ_multicore_mesi.v:430: $finish called at 406045000 (1ps)"
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/titan_x_top/tb_integ_multicore_mesi.v:430: $finish called at 406245000 (1ps)"
     ]
   },
   {
@@ -572,17 +614,6 @@
     ]
   },
   {
-    "name": "tb_integ_peripherals",
-    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/titan_x_top/tb_integ_peripherals.v",
-    "verdict": "PASS",
-    "tail": [
-      "  PERIPHERAL QUALIFICATION VERDICT: 11 PASSED, 0 FAILED",
-      "  REGRESS_RESULT: PASS",
-      "==================================================================",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/titan_x_top/tb_integ_peripherals.v:394: $finish called at 16335130 (1ps)"
-    ]
-  },
-  {
     "name": "tb_integ_security_chain",
     "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/verification/integration/tb_integ_security_chain.v",
     "verdict": "PASS",
@@ -590,7 +621,7 @@
       "------------------------------------------------",
       "SEC_CHAIN: 15 checks, 0 errors",
       "REGRESS_RESULT: PASS",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/verification/integration/tb_integ_security_chain.v:225: $finish called at 16295000 (1ps)"
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/verification/integration/tb_integ_security_chain.v:225: $finish called at 12849545000 (1ps)"
     ]
   },
   {
@@ -645,7 +676,7 @@
       "------------------------------------------------",
       "tb_l2_cache_ctrl: 172 checks, 0 errors",
       "REGRESS_RESULT: PASS",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/memory/l2_cache_ctrl/tb_l2_cache_ctrl.v:538: $finish called at 5355000 (1ps)"
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/memory/l2_cache_ctrl/tb_l2_cache_ctrl.v:538: $finish called at 5745000 (1ps)"
     ]
   },
   {
@@ -656,7 +687,7 @@
       "------------------------------------------------",
       "tb_l2_cache_top: 75 checks, 0 errors",
       "REGRESS_RESULT: PASS",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/memory/l2_cache_top/tb_l2_cache_top.v:475: $finish called at 9015000 (1ps)"
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/memory/l2_cache_top/tb_l2_cache_top.v:475: $finish called at 9385000 (1ps)"
     ]
   },
   {
@@ -664,10 +695,10 @@
     "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/memory/l2_data_array/tb_l2_data_array.v",
     "verdict": "PASS",
     "tail": [
-      "==============================",
-      "L2_DATA_ARRAY VERDICT: \u2705 PASS \u2014 Completed (no crash)",
-      "==============================",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/memory/l2_data_array/tb_l2_data_array.v:74: $finish called at 6130000 (1ps)"
+      "------------------------------------------------",
+      "tb_l2_data_array: 30 checks, 0 errors",
+      "REGRESS_RESULT: PASS",
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/memory/l2_data_array/tb_l2_data_array.v:218: $finish called at 676000 (1ps)"
     ]
   },
   {
@@ -675,10 +706,10 @@
     "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/memory/l2_snoop_filter/tb_l2_snoop_filter.v",
     "verdict": "PASS",
     "tail": [
-      "==============================",
-      "L2_SNOOP_FILTER VERDICT: \u2705 PASS \u2014 Completed (no crash)",
-      "==============================",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/memory/l2_snoop_filter/tb_l2_snoop_filter.v:84: $finish called at 6130000 (1ps)"
+      "------------------------------------------------",
+      "L2_SNOOP_FILTER: 46 checks, 0 errors",
+      "REGRESS_RESULT: PASS",
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/memory/l2_snoop_filter/tb_l2_snoop_filter.v:308: $finish called at 1055000 (1ps)"
     ]
   },
   {
@@ -733,7 +764,7 @@
       "------------------------------------------------",
       "MULTICORE_COHERENCE: 13 checks, 0 errors",
       "REGRESS_RESULT: PASS",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/verification/integration/tb_multicore_coherence.v:317: $finish called at 403585000 (1ps)"
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/verification/integration/tb_multicore_coherence.v:317: $finish called at 403625000 (1ps)"
     ]
   },
   {
@@ -744,7 +775,7 @@
       "==============================",
       "PCIE_PIPE_IF VERDICT: \u2705 PASS \u2014 All tests passed",
       "==============================",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/peripherals/pcie_pipe_if/tb_pcie_pipe_if.v:155: $finish called at 50600 (1ps)"
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/peripherals/pcie_pipe_if/tb_pcie_pipe_if.v:153: $finish called at 50600 (1ps)"
     ]
   },
   {
@@ -1111,36 +1142,14 @@
     ]
   },
   {
-    "name": "tb_secure_boot",
-    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/security/secure_boot/tb_secure_boot.v",
-    "verdict": "PASS",
-    "tail": [
-      "SECURE BOOT VERDICT: \u2705 PASS \u2014 All 6 security scenarios verified",
-      "REGRESS_RESULT: PASS",
-      "==================================================================",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/security/secure_boot/tb_secure_boot.v:311: $finish called at 42515000 (1ps)"
-    ]
-  },
-  {
-    "name": "tb_secure_boot_crypto",
-    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/security/secure_boot/tb_secure_boot_crypto.v",
-    "verdict": "PASS",
-    "tail": [
-      "  SECURE BOOT CRYPTO VERDICT: 7 PASSED, 0 FAILED",
-      "  REGRESS_RESULT: PASS",
-      "==================================================================",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/security/secure_boot/tb_secure_boot_crypto.v:314: $finish called at 58415000 (1ps)"
-    ]
-  },
-  {
     "name": "tb_sha256_engine",
     "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/peripherals/sha256_engine/tb_sha256_engine.v",
     "verdict": "PASS",
     "tail": [
       "==============================",
-      "SHA256_ENGINE VERDICT: \u2705 PASS \u2014 All tests passed",
+      "SHA256_ENGINE VERDICT: \u2705 PASS \u2014 All tests passed (including NIST CAVP vectors)",
       "==============================",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/peripherals/sha256_engine/tb_sha256_engine.v:167: $finish called at 1126800 (1ps)"
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/peripherals/sha256_engine/tb_sha256_engine.v:257: $finish called at 7781600 (1ps)"
     ]
   },
   {
@@ -1185,28 +1194,6 @@
       " VERDICT: \u2705 PASS \u2014 ALL 11 CHECKS PASSED WITH 0 ERRORS",
       "========================================================",
       "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/includes/tb_stdcell_stubs.v:67: $finish called at 85000 (1ps)"
-    ]
-  },
-  {
-    "name": "tb_titan_x_performance",
-    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/verification/performance/tb_titan_x_performance.v",
-    "verdict": "PASS",
-    "tail": [
-      " Total Verification Failed: 0",
-      "=========================================================================================================",
-      "[PHASE 6 SIGN-OFF: SUCCESS] Performance verification and multi-core firmware boot 100% complete.",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/verification/performance/tb_titan_x_performance.v:360: $finish called at 31066000 (1ps)"
-    ]
-  },
-  {
-    "name": "tb_titan_x_top",
-    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/titan_x_top/tb_titan_x_top.v",
-    "verdict": "PASS",
-    "tail": [
-      "========================================",
-      "TITAN-X SoC VERDICT: \u2705 PASS \u2014 All integration checks passed",
-      "========================================",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/top/titan_x_top/tb_titan_x_top.v:171: $finish called at 9420400 (1ps)"
     ]
   },
   {
@@ -1272,7 +1259,7 @@
       "==============================",
       "WDT VERDICT: \u2705 PASS \u2014 All tests passed",
       "==============================",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/peripherals/watchdog_timer/tb_watchdog_timer.v:162: $finish called at 509600 (1ps)"
+      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/peripherals/watchdog_timer/tb_watchdog_timer.v:188: $finish called at 754400 (1ps)"
     ]
   }
 ]
