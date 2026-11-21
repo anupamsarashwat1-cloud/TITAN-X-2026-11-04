@@ -1,13 +1,13 @@
 [
   {
-    "name": "tb_mbist_controller",
-    "path": "/home/anupam-sarashwat/SMVDU_TITAN_X_RTL_to_GDS/Design Files of TITAN X/memory/mbist/tb_mbist_controller.v",
+    "name": "tb_titan_x_top",
+    "path": "/home/anupam-sarashwat/SMVDU_TITAN_X_RTL_to_GDS/Design Files of TITAN X/top/titan_x_top/tb_titan_x_top.v",
     "verdict": "PASS",
     "tail": [
-      "REGRESS_RESULT: PASS",
-      "ALL MBIST CONTROLLER TESTS PASSED (100% March C+ Coverage)",
-      "==================================================",
-      "/home/anupam-sarashwat/SMVDU_TITAN_X_RTL_to_GDS/Design Files of TITAN X/memory/mbist/tb_mbist_controller.v:253: $finish called at 16525000 (1ps)"
+      "========================================",
+      "TITAN-X SoC VERDICT: PASS - All Phase 4 & 5 integration checks passed",
+      "========================================",
+      "/home/anupam-sarashwat/SMVDU_TITAN_X_RTL_to_GDS/Design Files of TITAN X/top/titan_x_top/tb_titan_x_top.v:254: $finish called at 87440400 (1ps)"
     ]
   }
 ]
