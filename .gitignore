@@ -16,3 +16,15 @@ __pycache__/
 *~
 .DS_Store
 verification/coverage/obj_dir/
+
+# ATPG temporary test artifacts
+tools/atpg/*.elf
+tools/atpg/*.bin
+tools/atpg/*.hex
+tools/atpg/test_atpg_*.S
+tools/atpg/spike_commit_*.log
+tools/atpg/rtl_commit.log
+tools/atpg/rtl_dump.txt
+tools/atpg/test_atpg.S
+verification/linux_bringup/opensbi
+

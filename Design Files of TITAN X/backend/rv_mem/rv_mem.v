@@ -73,6 +73,9 @@ module rv_mem (
     reg        lr_valid;
     reg [39:0] lr_addr;
     reg        is_sc_q;
+    reg [2:0]  funct3_q;
+    reg [4:0]  amo_funct5_q;
+    reg [63:0] rs2_data_q;
 
     reg [31:0] amo_old_32, amo_new_32;
     reg [63:0] amo_old_64, amo_new_64;
@@ -176,6 +179,9 @@ module rv_mem (
             lr_valid        <= 1'b0;
             lr_addr         <= 40'h0;
             is_sc_q         <= 1'b0;
+            funct3_q        <= 3'h0;
+            amo_funct5_q    <= 5'h0;
+            rs2_data_q      <= 64'h0;
             mem_fault       <= 1'b0;
             mem_fault_pc    <= 64'h0;
             mem_fault_cause <= 64'h0;
@@ -196,6 +202,9 @@ module rv_mem (
             pc_q            <= 64'h0;
             store_addr_q    <= 40'h0;
             is_sc_q         <= 1'b0;
+            funct3_q        <= 3'h0;
+            amo_funct5_q    <= 5'h0;
+            rs2_data_q      <= 64'h0;
             mem_fault       <= 1'b0;
             mem_fault_pc    <= 64'h0;
             mem_fault_cause <= 64'h0;
@@ -214,6 +223,9 @@ module rv_mem (
                         mem_active      <= 1'b0;
                         mstate          <= MS_IDLE;
                     end else if (valid_in && is_amo) begin
+                        funct3_q      <= funct3;
+                        amo_funct5_q  <= amo_funct5;
+                        rs2_data_q    <= rs2_data;
                         if (amo_funct5 == `AMO_LR) begin
                             // LR: Load Reserved
                             dmem_arvalid  <= 1'b1;
@@ -272,6 +284,9 @@ module rv_mem (
                             is_sc_q       <= 1'b0;
                         end
                     end else if (valid_in && mem_write) begin
+                        funct3_q      <= funct3;
+                        amo_funct5_q  <= amo_funct5;
+                        rs2_data_q    <= rs2_data;
                         dmem_awvalid  <= 1'b1;
                         dmem_awaddr   <= eff_mem_addr;
                         store_addr_q  <= eff_mem_addr;
@@ -290,6 +305,9 @@ module rv_mem (
                         valid_out     <= 1'b0;
                         is_sc_q       <= 1'b0;
                     end else if (valid_in && mem_read) begin
+                        funct3_q      <= funct3;
+                        amo_funct5_q  <= amo_funct5;
+                        rs2_data_q    <= rs2_data;
                         dmem_arvalid  <= 1'b1;
                         dmem_araddr   <= eff_mem_addr;
                         pc_q          <= clean_pc_in;
@@ -345,7 +363,7 @@ module rv_mem (
                             load_data    <= dmem_rdata;
                             result       <= extend_load(
                                 dmem_rdata >> {dmem_araddr[2:0], 3'b000},
-                                funct3);
+                                funct3_q);
                             valid_out    <= 1'b1;
                             mem_fault    <= 1'b0;
                         end
@@ -371,15 +389,15 @@ module rv_mem (
                             dmem_bready  <= 1'b1;
                             mstate       <= MS_AMO_WRITE;
 
-                            if (funct3 == `AMO_W) begin
+                            if (funct3_q == `AMO_W) begin
                                 amo_old_32 = (dmem_rdata >> {store_addr_q[2:0], 3'b000}) & 32'hFFFF_FFFF;
-                                amo_new_32 = calc_amo_32(amo_funct5, amo_old_32, rs2_data[31:0]);
+                                amo_new_32 = calc_amo_32(amo_funct5_q, amo_old_32, rs2_data_q[31:0]);
                                 result     <= {{32{amo_old_32[31]}}, amo_old_32};
                                 dmem_wdata <= {32'h0, amo_new_32} << {store_addr_q[2:0], 3'b000};
                                 dmem_wstrb <= 8'h0F << store_addr_q[2:0];
                             end else begin
                                 amo_old_64 = dmem_rdata;
-                                amo_new_64 = calc_amo_64(amo_funct5, amo_old_64, rs2_data);
+                                amo_new_64 = calc_amo_64(amo_funct5_q, amo_old_64, rs2_data_q);
                                 result     <= amo_old_64;
                                 dmem_wdata <= amo_new_64;
                                 dmem_wstrb <= 8'hFF;

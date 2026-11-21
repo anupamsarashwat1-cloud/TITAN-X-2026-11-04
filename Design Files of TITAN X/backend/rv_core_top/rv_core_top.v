@@ -1046,6 +1046,7 @@ module rv_core_top #(
                 instr_hist[h_idx[3:0]] <= u_decode.instr_in;
                 h_idx <= h_idx + 1;
 
+`ifdef OPENSBI_DEBUG
                 if (u_decode.pc_in == 64'h80000550) begin
                     $display("[HANG DETECTED] Core 0 entered _start_hang at instr #%0d! History:", trace_cnt);
                     for (integer k = 0; k < 16; k = k + 1) begin
@@ -1066,6 +1067,7 @@ module rv_core_top #(
                     end
                     $finish;
                 end
+`endif
 
 `ifdef DEBUG_CORE_TRACE
                 if (u_decode.pc_in >= 64'h8000deb0 && u_decode.pc_in <= 64'h8000debc) begin

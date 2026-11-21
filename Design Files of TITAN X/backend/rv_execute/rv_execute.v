@@ -244,9 +244,10 @@ module rv_execute #(
     // 64-bit INT64_MIN pattern — a naive combined detector would also
     // swallow the legal 64-bit (-2^31)/(-1) = +2^31 and return garbage.
     wire        mxw       = (opcode == `OP_REG64);
-    wire [63:0] eff_a     = mxw ? {{32{src1[31]}}, src1[31:0]} : src1;
-    wire [63:0] eff_b     = mxw ? {{32{src2[31]}}, src2[31:0]} : src2;
     wire        signed_op = (alu_op == `ALU_DIV) || (alu_op == `ALU_REM);
+    wire        is_divu_w = mxw && ((alu_op == `ALU_DIVU) || (alu_op == `ALU_REMU));
+    wire [63:0] eff_a     = mxw ? (is_divu_w ? {32'h0, src1[31:0]} : {{32{src1[31]}}, src1[31:0]}) : src1;
+    wire [63:0] eff_b     = mxw ? (is_divu_w ? {32'h0, src2[31:0]} : {{32{src2[31]}}, src2[31:0]}) : src2;
     wire        a_neg     = eff_a[63];
     wire        b_zero    = (eff_b == 64'h0);
     wire        b_m1      = (eff_b == 64'hFFFF_FFFF_FFFF_FFFF);
