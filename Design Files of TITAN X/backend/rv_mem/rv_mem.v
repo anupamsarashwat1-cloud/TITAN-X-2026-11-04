@@ -76,7 +76,7 @@ module rv_mem (
 
     reg [31:0] amo_old_32, amo_new_32;
     reg [63:0] amo_old_64, amo_new_64;
-    wire [39:0] eff_mem_addr = (phys_addr != 40'h0 || alu_result[39:0] == 40'h0) ? phys_addr : alu_result[39:0];
+    wire [39:0] eff_mem_addr = (phys_addr != 40'h0 && phys_addr[0] !== 1'bx) ? phys_addr : alu_result[39:0];
 
     wire [1:0]  clean_bresp = dmem_bresp;
     wire [1:0]  clean_rresp = dmem_rresp;

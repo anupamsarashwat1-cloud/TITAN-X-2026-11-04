@@ -54,7 +54,7 @@ module rv_c_decoder (
     wire [8:0] uimm_sdsp  = {c_instr[9:7], c_instr[12:10], 3'b000};
 
     always @(*) begin
-        instr32 = 32'h0000_0013; // default NOP
+        instr32 = 32'h0000_0000; // default 0 (illegal/bubble)
         illegal = 1'b0;
 
         case (op2)

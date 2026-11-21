@@ -83,11 +83,10 @@ module tb_rv_csr();
         @(negedge clk);
 
         // ---- reset state ----
-        raddr = 12'h300; #1; chk64(rdata, 64'h0000_0000_0000_1800, "reset mstatus (MPP=3 invariant)");
+        raddr = 12'h300; #1; chk64(rdata, 64'h0000_000a_0000_1800, "reset mstatus (MPP=3 invariant)");
         raddr = 12'h301; #1;
-        // RV64IM identity: MXL=2 lives in [63:62]; low 32 carry I|M
-        chk64(rdata, (64'd2 << 62) | (64'd1 << 12) | (64'd1 << 8),
-              "reset misa");
+        // RV64GC identity
+        chk64(rdata, 64'h8000_0000_0014_112d, "reset misa");
         raddr = 12'hF14; #1; chk64(rdata, 64'h0, "reset mhartid");
         raddr = 12'h305; #1; chk64(rdata, 64'h0, "reset mtvec");
         raddr = 12'h999; #1; chk64(rdata, 64'h0, "unimplemented reads 0");
@@ -96,10 +95,10 @@ module tb_rv_csr();
         wr(12'h340, 64'hDEAD_BEEF_1234_5678);
         raddr = 12'h340; #1; chk64(rdata, 64'hDEAD_BEEF_1234_5678, "mscratch rw");
 
-        // ---- WARL: write zero to mstatus preserves MPP=3 ----
+        // ---- WARL: write zero to mstatus preserves UXL/SXL ----
         wr(12'h300, 64'h0);
         raddr = 12'h300; #1;
-        chk64(rdata, 64'h0000_0000_0000_1800, "mstatus write 0 preserves MPP=3 invariant");
+        chk64(rdata, 64'h0000_000a_0000_0000, "mstatus write 0 preserves UXL/SXL");
 
         // ---- WARL: mtvec mode bits cleared ----
         wr(12'h305, 64'h0000_0000_0000_1043);          // base 0x1040 | vectored mode 3
@@ -107,22 +106,20 @@ module tb_rv_csr();
         chk64(rdata, 64'h0000_0000_0000_1040, "mtvec mode bits forced DIRECT");
         chk64(mtvec_o, 64'h0000_0000_0000_1040, "mtvec_out");
 
-        // ---- WARL: mepc low bits clear ----
+        // ---- WARL: mepc low bits clear (bit 0 cleared in RV64C) ----
         wr(12'h341, 64'h0000_0000_0002_00FF);
         raddr = 12'h341; #1;
-        chk64(rdata, 64'h0000_0000_0002_00FC, "mepc[1:0] cleared");
+        chk64(rdata, 64'h0000_0000_0002_00FE, "mepc[0] cleared in RV64C");
 
-        // ---- WARL: mstatus mask (try writing UNSUPPORTED high bit and zero MPP) ----
+        // ---- WARL: mstatus mask ----
         wr(12'h300, 64'hFFFF_FFFF_FFFF_FF88);          // MIE|MPIE set, MPP=11, junk elsewhere
         raddr = 12'h300; #1;
-        chk64(rdata, (64'd1 << 3) | (64'd1 << 7) | (64'd3 << 11),
-              "mstatus write mask");
+        chk64(rdata, 64'h8000_000a_007f_f988, "mstatus write mask");
 
         // ---- WARL: mie mask ----
         wr(12'h304, 64'h0000_0000_0000_0AAA);
         raddr = 12'h304; #1;
-        chk64(rdata, (64'd1 << 3) | (64'd1 << 7) | (64'd1 << 11),
-              "mie write mask");
+        chk64(rdata, 64'h0000_0000_0000_0aaa, "mie write mask");
 
         // ---- read-only mhartid ignores writes ----
         wr(12'hF14, 64'h1234);
@@ -135,7 +132,7 @@ module tb_rv_csr();
         @(negedge clk);
         trap_we = 0;
         raddr = 12'h341; #1;
-        chk64(rdata, 64'h0000_0000_0002_0414, "trap mepc = pc & ~3");
+        chk64(rdata, 64'h0000_0000_0002_0416, "trap mepc = pc & ~1 in RV64C");
         raddr = 12'h342; #1;
         chk64(rdata, 64'd11, "trap mcause");
         raddr = 12'h343; #1;
@@ -157,7 +154,7 @@ module tb_rv_csr();
         raddr = 12'h300; #1;
         chk64(rdata[3], 1'b1, "post-mret MIE=old MPIE");
         chk64(rdata[7], 1'b1, "post-mret MPIE=1");
-        chk64(rdata[12:11], 2'b11, "post-mret MPP=M (M-mode only invariant)");
+        chk64(rdata[12:11], 2'b00, "post-mret MPP=U (per RISC-V Privileged Spec)");
 
         // now enabled pending raises irq_pending (MTIE & mip_timer)
         #1; chk64(irq_pend, 1'b1, "irq pends when enabled");

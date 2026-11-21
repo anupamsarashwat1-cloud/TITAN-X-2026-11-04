@@ -241,10 +241,14 @@ module tb_mbist_controller;
         // Summary
         // ----------------------------------------------------
         $display("\n==================================================");
-        if (errors == 0)
+        if (errors == 0) begin
+            $display("ALL TESTS PASSED");
+            $display("REGRESS_RESULT: PASS");
             $display("ALL MBIST CONTROLLER TESTS PASSED (100%% March C+ Coverage)");
-        else
+        end else begin
+            $display("REGRESS_RESULT: FAIL");
             $display("MBIST CONTROLLER VERIFICATION FAILED: %0d errors", errors);
+        end
         $display("==================================================\n");
         $finish;
     end

@@ -21,7 +21,7 @@
             reg = <0>;
             status = "okay";
             compatible = "riscv";
-            riscv,isa = "rv64imafd";
+            riscv,isa = "rv64imafdc";
             mmu-type = "riscv,sv39";
             clock-frequency = <100000000>; /* 100 MHz */
             cpu0_intc: interrupt-controller {
@@ -36,7 +36,7 @@
             reg = <1>;
             status = "okay";
             compatible = "riscv";
-            riscv,isa = "rv64imafd";
+            riscv,isa = "rv64imafdc";
             mmu-type = "riscv,sv39";
             clock-frequency = <100000000>;
             cpu1_intc: interrupt-controller {
@@ -51,7 +51,7 @@
             reg = <2>;
             status = "okay";
             compatible = "riscv";
-            riscv,isa = "rv64imafd";
+            riscv,isa = "rv64imafdc";
             mmu-type = "riscv,sv39";
             clock-frequency = <100000000>;
             cpu2_intc: interrupt-controller {
@@ -66,7 +66,7 @@
             reg = <3>;
             status = "okay";
             compatible = "riscv";
-            riscv,isa = "rv64imafd";
+            riscv,isa = "rv64imafdc";
             mmu-type = "riscv,sv39";
             clock-frequency = <100000000>;
             cpu3_intc: interrupt-controller {

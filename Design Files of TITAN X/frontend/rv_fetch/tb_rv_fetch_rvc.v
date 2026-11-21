@@ -111,10 +111,14 @@ module tb_rv_fetch_rvc();
             $display("PASS: Instr 2 pc=0x%08X instr=0x%08X", cap_pc[2], cap_instr[2]);
         end
 
-        if (error_count == 0)
-            $display("\n=== ALL RVC FETCH TESTS PASSED 100% ===");
-        else
+        if (error_count == 0) begin
+            $display("ALL TESTS PASSED");
+            $display("REGRESS_RESULT: PASS");
+            $display("\n=== ALL RVC FETCH TESTS PASSED 100%% ===");
+        end else begin
+            $display("REGRESS_RESULT: FAIL");
             $display("\n=== FAILED with %0d errors ===", error_count);
+        end
         $finish;
     end
 endmodule

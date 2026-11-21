@@ -1,11 +1,13 @@
 includes/stdcell_stubs.v
 common/BUFX4/buf_macros.v
 common/cdc_sync/cdc_sync.v
+common/sync_cell.v
 common/fifo_sync/fifo_sync.v
 common/fifo_async/fifo_async.v
 common/reset_sync/reset_sync.v
 frontend/rv_bpu/rv_bpu.v
 frontend/rv_fetch/rv_fetch.v
+frontend/rv_decode/rv_c_decoder.v
 frontend/rv_decode/rv_decode.v
 frontend/rv_icache/rv_icache.v
 backend/rv_regfile/rv_regfile.v
@@ -34,6 +36,7 @@ memory/l2_cache_top/l2_cache_top.v
 memory/ddr_scheduler/ddr_scheduler.v
 memory/ddr_phy_if/ddr_phy_if.v
 memory/ddr_ctrl_top/ddr_ctrl_top.v
+memory/mbist/mbist_controller.v
 interconnect/axi4_burst_to_lite.v
 interconnect/interconnect_mpu/mpu.v
 interconnect/mmu_arbiter/mmu_arbiter.v

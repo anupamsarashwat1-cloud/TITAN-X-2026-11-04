@@ -53,6 +53,8 @@ module tb_rv_regfile();
         error_count = 0;
         rd_addr1 = 0; rd_addr2 = 0; wr_en = 0; wr_addr = 0; wr_data = 0;
         for (i = 0; i < 32; i = i + 1) m_mem[i] = 64'h0;
+        m_mem[10] = 64'd0;
+        m_mem[11] = 64'h0000_0000_8002_0000;
         rst_n = 0; repeat(4) @(posedge clk); rst_n = 1; repeat(2) @(posedge clk);
 
         // TEST 1: reset clears all registers (deterministic sim start)
