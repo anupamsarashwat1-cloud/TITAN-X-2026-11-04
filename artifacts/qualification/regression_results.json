@@ -1,13 +1,13 @@
 [
   {
-    "name": "tb_titan_x_performance",
-    "path": "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/performance/tb_titan_x_performance.v",
+    "name": "tb_mbist_controller",
+    "path": "/home/anupam-sarashwat/SMVDU_TITAN_X_RTL_to_GDS/Design Files of TITAN X/memory/mbist/tb_mbist_controller.v",
     "verdict": "PASS",
     "tail": [
-      " Total Verification Failed: 0",
-      "=========================================================================================================",
-      "[PHASE 6 SIGN-OFF: SUCCESS] Performance verification and multi-core firmware boot 100% complete.",
-      "/home/anupam-sarashwat/TITAN-X-2026-11-04/Design Files of TITAN X/performance/tb_titan_x_performance.v:449: $finish called at 156406000 (1ps)"
+      "REGRESS_RESULT: PASS",
+      "ALL MBIST CONTROLLER TESTS PASSED (100% March C+ Coverage)",
+      "==================================================",
+      "/home/anupam-sarashwat/SMVDU_TITAN_X_RTL_to_GDS/Design Files of TITAN X/memory/mbist/tb_mbist_controller.v:253: $finish called at 16525000 (1ps)"
     ]
   }
 ]
