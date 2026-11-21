@@ -147,7 +147,9 @@ module rv_monitor_core #(
 
     wire mem_stall = (dmem_awvalid && (!dmem_awready || !dmem_wready)) ||
                      (dmem_arvalid && !dmem_arready);
+    /* verilator lint_off UNOPTFLAT */
     wire stall_ex = mem_stall || halt_req;
+    /* verilator lint_on UNOPTFLAT */
     assign stall = mul_div_stall || stall_ex;
 
     rv_execute #(

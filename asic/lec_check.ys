@@ -1,0 +1,76 @@
+# ==============================================================================
+# SMVDU TITAN-X: Formal Logical Equivalence Check (LEC) Suite
+# Flow: Golden RTL vs Synthesized Gate-Level Logic Miter
+# Subsystems:
+#   1. rv_c_decoder (Combinatorial RV64C Instruction Decompressor)
+#   2. mbist_controller (March C+ Memory Built-In Self-Test Engine)
+#   3. aes_engine (Cryptographic Hardware Accelerator)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Test 1: Formal LEC on rv_c_decoder
+# ------------------------------------------------------------------------------
+design -reset
+read_verilog -DSYNTHESIS -Irtl/includes rtl/frontend/rv_decode/rv_c_decoder.v
+prep -top rv_c_decoder -flatten
+splitnets -ports
+design -stash gold
+
+read_verilog -DSYNTHESIS -Irtl/includes rtl/frontend/rv_decode/rv_c_decoder.v
+prep -top rv_c_decoder -flatten
+splitnets -ports
+synth -top rv_c_decoder -noalumacc
+design -stash gate
+
+design -copy-from gold -as gold rv_c_decoder
+design -copy-from gate -as gate rv_c_decoder
+equiv_make gold gate equiv_miter_rvc
+hierarchy -top equiv_miter_rvc
+equiv_simple
+equiv_status -assert
+
+# ------------------------------------------------------------------------------
+# Test 2: Formal LEC on mbist_controller
+# ------------------------------------------------------------------------------
+design -reset
+read_verilog -DSYNTHESIS -Irtl/includes rtl/memory/mbist/mbist_controller.v
+prep -top mbist_controller -flatten
+splitnets -ports
+design -stash gold
+
+read_verilog -DSYNTHESIS -Irtl/includes rtl/memory/mbist/mbist_controller.v
+prep -top mbist_controller -flatten
+splitnets -ports
+synth -top mbist_controller -noalumacc
+design -stash gate
+
+design -copy-from gold -as gold mbist_controller
+design -copy-from gate -as gate mbist_controller
+equiv_make gold gate equiv_miter_mbist
+hierarchy -top equiv_miter_mbist
+equiv_simple
+equiv_induct
+equiv_status -assert
+
+# ------------------------------------------------------------------------------
+# Test 3: Formal LEC on aes_engine
+# ------------------------------------------------------------------------------
+design -reset
+read_verilog -DSYNTHESIS -Irtl/includes rtl/peripherals/aes_engine/aes_engine.v
+prep -top aes_engine -flatten
+splitnets -ports
+design -stash gold
+
+read_verilog -DSYNTHESIS -Irtl/includes rtl/peripherals/aes_engine/aes_engine.v
+prep -top aes_engine -flatten
+splitnets -ports
+synth -top aes_engine -noalumacc
+design -stash gate
+
+design -copy-from gold -as gold aes_engine
+design -copy-from gate -as gate aes_engine
+equiv_make gold gate equiv_miter_aes
+hierarchy -top equiv_miter_aes
+equiv_simple
+equiv_induct
+equiv_status -assert

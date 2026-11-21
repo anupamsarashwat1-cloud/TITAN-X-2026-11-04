@@ -51,14 +51,16 @@ module qspi_controller #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             ctrl_reg <= 32'h0;
-            cmd_reg <= 32'h0;
-            tx_data <= 32'h0;
+            cmd_reg  <= 32'h0;
+            tx_data  <= 32'h0;
+            rx_data  <= 32'h0;
             stat_reg <= 32'h0;
         end else if (psel && penable && pwrite) begin
             case (paddr[7:0])
                 8'h00: ctrl_reg <= pwdata;
                 8'h04: cmd_reg <= pwdata;
                 8'h08: tx_data <= pwdata;
+                default: ;
             endcase
         end
     end
@@ -132,6 +134,7 @@ module qspi_controller #(
                         state <= IDLE;
                     end
                 end
+                default: state <= IDLE;
             endcase
         end
     end

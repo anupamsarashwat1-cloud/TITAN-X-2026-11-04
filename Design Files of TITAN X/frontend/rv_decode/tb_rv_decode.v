@@ -151,8 +151,18 @@ module tb_rv_decode();
 
         // TEST 9: Unrecognized SYSTEM instruction
         $display("\n--- TEST 9: Invalid SYSTEM instruction ---");
-        decode_instr(64'h2008, 32'h1230_0073); // SYSTEM opcode with unknown funct12
+        decode_instr(64'h2008, 32'h5670_0073); // SYSTEM opcode with unknown funct12
         check(illegal_instr, 1'b1, "unknown SYSTEM funct12 flagged as illegal_instr");
+
+        // TEST 10: RVC Compressed Instructions Decode
+        $display("\n--- TEST 10: RVC Compressed Instructions ---");
+        // c.li a1, 0 (0x4581) -> addi x11, x0, 0
+        decode_instr(64'h200C, 32'h0000_4581);
+        check(opcode, 7'h13, "c.li opcode=0x13 (OP_IMM)");
+        check(rd, 5'd11, "c.li rd=x11 (a1)");
+        check(imm, 64'd0, "c.li imm=0");
+        check(reg_write, 1'b1, "c.li reg_write=1");
+        check(illegal_instr, 1'b0, "c.li legal");
 
         $display("\n==============================");
         if (error_count == 0)

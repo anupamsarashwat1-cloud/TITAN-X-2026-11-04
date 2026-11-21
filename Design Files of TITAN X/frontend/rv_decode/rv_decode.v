@@ -59,12 +59,26 @@ module rv_decode #(
     output reg  [63:0] fault_tval_out,
     output reg         valid_out
 );
-    wire [6:0] op   = instr_in[6:0];
-    wire [4:0] r_rs1 = instr_in[19:15];
-    wire [4:0] r_rs2 = instr_in[24:20];
-    wire [4:0] r_rd  = instr_in[11:7];
-    wire [2:0] f3   = instr_in[14:12];
-    wire [6:0] f7   = instr_in[31:25];
+    // -------------------------------------------------------
+    // RVC Compressed Instruction Decompressor
+    // -------------------------------------------------------
+    wire [31:0] decomp_instr;
+    wire        c_illegal;
+    rv_c_decoder u_rv_c_decoder (
+        .c_instr      (instr_in[15:0]),
+        .instr32      (decomp_instr),
+        .illegal      (c_illegal)
+    );
+
+    wire is_compressed = (instr_in[1:0] != 2'b11);
+    wire [31:0] eff_instr = is_compressed ? decomp_instr : instr_in;
+
+    wire [6:0] op   = eff_instr[6:0];
+    wire [4:0] r_rs1 = eff_instr[19:15];
+    wire [4:0] r_rs2 = eff_instr[24:20];
+    wire [4:0] r_rd  = eff_instr[11:7];
+    wire [2:0] f3   = eff_instr[14:12];
+    wire [6:0] f7   = eff_instr[31:25];
 
     // Immediate decode (combinational)
     reg [63:0] imm_comb;
@@ -91,17 +105,17 @@ module rv_decode #(
         sret_comb       = 1'b0;
         is_amo_comb     = 1'b0;
         amo_funct5_comb = 5'h0;
-        illegal_comb    = (instr_in[1:0] != 2'b11); // Non-32-bit instructions illegal
+        illegal_comb    = is_compressed ? c_illegal : 1'b0;
         csrop_comb      = 2'b00;
 
         case (op)
             `OP_LUI: begin
-                imm_comb    = {{32{instr_in[31]}}, instr_in[31:12], 12'h0};
+                imm_comb    = {{32{eff_instr[31]}}, eff_instr[31:12], 12'h0};
                 alu_op_comb = `ALU_LUI;
                 reg_w_comb  = 1'b1;
             end
             `OP_AUIPC: begin
-                imm_comb    = {{32{instr_in[31]}}, instr_in[31:12], 12'h0};
+                imm_comb    = {{32{eff_instr[31]}}, eff_instr[31:12], 12'h0};
                 alu_op_comb = `ALU_AUIPC;
                 reg_w_comb  = 1'b1;
             end
@@ -109,21 +123,21 @@ module rv_decode #(
                 // Width check: 51 sign bits + 1 + 8 + 1 + 10 + 1 = 64.
                 // (Was 43 sign bits — a 63-bit concat silently
                 // zero-extended, corrupting every jal target.)
-                imm_comb    = {{51{instr_in[31]}}, instr_in[19:12],
-                               instr_in[20], instr_in[30:21], 1'b0};
+                imm_comb    = {{51{eff_instr[31]}}, eff_instr[19:12],
+                               eff_instr[20], eff_instr[30:21], 1'b0};
                 alu_op_comb = `ALU_ADD;
                 reg_w_comb  = 1'b1;
                 jal_comb    = 1'b1;
             end
             `OP_JALR: begin
-                imm_comb    = {{52{instr_in[31]}}, instr_in[31:20]};
+                imm_comb    = {{52{eff_instr[31]}}, eff_instr[31:20]};
                 alu_op_comb = `ALU_ADD;
                 reg_w_comb  = 1'b1;
                 jalr_comb   = 1'b1;
             end
             `OP_BRANCH: begin
-                imm_comb    = {{51{instr_in[31]}}, instr_in[31], instr_in[7],
-                               instr_in[30:25], instr_in[11:8], 1'b0};
+                imm_comb    = {{51{eff_instr[31]}}, eff_instr[31], eff_instr[7],
+                               eff_instr[30:25], eff_instr[11:8], 1'b0};
                 br_comb     = 1'b1;
                 case (f3)
                     3'b000: alu_op_comb = `ALU_SUB;  // BEQ
@@ -136,16 +150,16 @@ module rv_decode #(
                 endcase
             end
             `OP_LOAD: begin
-                imm_comb   = {{52{instr_in[31]}}, instr_in[31:20]};
+                imm_comb   = {{52{eff_instr[31]}}, eff_instr[31:20]};
                 mem_r_comb = 1'b1;
                 reg_w_comb = 1'b1;
             end
             `OP_STORE: begin
-                imm_comb   = {{52{instr_in[31]}}, instr_in[31:25], instr_in[11:7]};
+                imm_comb   = {{52{eff_instr[31]}}, eff_instr[31:25], eff_instr[11:7]};
                 mem_w_comb = 1'b1;
             end
             `OP_IMM, `OP_IMM64: begin
-                imm_comb   = {{52{instr_in[31]}}, instr_in[31:20]};
+                imm_comb   = {{52{eff_instr[31]}}, eff_instr[31:20]};
                 reg_w_comb = 1'b1;
                 case (f3)
                     3'b000: alu_op_comb = `ALU_ADD;
@@ -198,14 +212,27 @@ module rv_decode #(
                 // immediate forms: rs1 field is a zimm VALUE, not an
                 // index — Block 3 substitutes {59'b0, r_rs1}.
                 if (f3 == 3'b000) begin
-                    case (instr_in[31:20])
+                    case (eff_instr[31:20])
                         12'h000: ec_comb   = 1'b1;    // ECALL
                         12'h001: eb_comb   = 1'b1;    // EBREAK
                         12'h302: mret_comb = 1'b1;    // MRET
                         12'h102: sret_comb = 1'b1;    // SRET
                         12'h105: ;                    // WFI (handled as NOP)
-                        default: begin
-                            if (instr_in[31:25] == 7'b0001001) begin
+                        `OP_LOAD_FP: begin
+                imm_comb   = {{52{eff_instr[31]}}, eff_instr[31:20]};
+                mem_r_comb = 1'b1;
+                reg_w_comb = 1'b1;
+            end
+            `OP_STORE_FP: begin
+                imm_comb   = {{52{eff_instr[31]}}, eff_instr[31:25], eff_instr[11:7]};
+                mem_w_comb = 1'b1;
+            end
+            `OP_FP, `OP_FMADD, `OP_FMSUB, `OP_FNMSUB, `OP_FNMADD: begin
+                reg_w_comb  = 1'b1;
+                alu_op_comb = `ALU_ADD;
+            end
+            default: begin
+                            if (eff_instr[31:25] == 7'b0001001) begin
                                 // SFENCE.VMA (handled as valid fence)
                             end else begin
                                 illegal_comb = 1'b1;
@@ -217,7 +244,7 @@ module rv_decode #(
                 end else begin
                     csr_comb   = 1'b1;
                     csrop_comb = f3[1:0];
-                    imm_comb   = {52'h0, instr_in[31:20]};
+                    imm_comb   = {52'h0, eff_instr[31:20]};
                     reg_w_comb = 1'b1;            // rd <- old value (x0 discards)
                 end
             end
@@ -227,13 +254,13 @@ module rv_decode #(
             end
             `OP_AMO: begin
                 is_amo_comb     = 1'b1;
-                amo_funct5_comb = instr_in[31:27];
+                amo_funct5_comb = eff_instr[31:27];
                 reg_w_comb      = 1'b1; // rd receives old value (or SC status)
                 alu_op_comb     = `ALU_ADD;
-                if (instr_in[31:27] == `AMO_SC) begin
+                if (eff_instr[31:27] == `AMO_SC) begin
                     mem_w_comb = 1'b1;
                     mem_r_comb = 1'b0;
-                end else if (instr_in[31:27] == `AMO_LR) begin
+                end else if (eff_instr[31:27] == `AMO_LR) begin
                     mem_r_comb = 1'b1;
                     mem_w_comb = 1'b0;
                 end else begin
@@ -241,6 +268,19 @@ module rv_decode #(
                     mem_r_comb = 1'b1;
                     mem_w_comb = 1'b1;
                 end
+            end
+            `OP_LOAD_FP: begin
+                imm_comb   = {{52{eff_instr[31]}}, eff_instr[31:20]};
+                mem_r_comb = 1'b1;
+                reg_w_comb = 1'b1;
+            end
+            `OP_STORE_FP: begin
+                imm_comb   = {{52{eff_instr[31]}}, eff_instr[31:25], eff_instr[11:7]};
+                mem_w_comb = 1'b1;
+            end
+            `OP_FP, `OP_FMADD, `OP_FMSUB, `OP_FNMSUB, `OP_FNMADD: begin
+                reg_w_comb  = 1'b1;
+                alu_op_comb = `ALU_ADD;
             end
             default: begin
                 illegal_comb = 1'b1;
@@ -283,7 +323,7 @@ module rv_decode #(
             instr_out <= 32'h0;
         end else if (!stall) begin
             pc_out    <= pc_in;
-            instr_out <= instr_in;
+            instr_out <= eff_instr;
         end
     end
 

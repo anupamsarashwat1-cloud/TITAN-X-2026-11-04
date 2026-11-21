@@ -76,6 +76,15 @@ module rv_core_top #(
     input  wire        dmem_rlast,
     input  wire [1:0]  dmem_rresp,
 
+    // AXI4 Master: Sv39 Page Table Walker (PTW)
+    output wire        ptw_arvalid,
+    input  wire        ptw_arready,
+    output wire [39:0] ptw_araddr,
+    input  wire        ptw_rvalid,
+    output wire        ptw_rready,
+    input  wire [63:0] ptw_rdata,
+    input  wire [1:0]  ptw_rresp,
+
     // L2 Snoop Port (idle until dcache returns)
     input  wire        snoop_valid,
     input  wire [39:0] snoop_addr,
@@ -127,6 +136,7 @@ module rv_core_top #(
 
     rv_fetch #(
         .RESET_PC     (RESET_PC),
+        .ENABLE_RVC   (1),
         .ENABLE_DRAIN (!ENABLE_L1_CACHE)
     ) u_fetch (
         .clk             (clk),
@@ -153,22 +163,33 @@ module rv_core_top #(
     // Instantiate I-side MMU
     wire [39:0] fe_pa;
     wire        fe_trans_valid, fe_trans_busy;
-    wire        ptw_imem_arvalid;
+    wire        fe_mmu_page_fault;
+    wire [63:0] fe_mmu_fault_va;
+    wire        ptw_imem_arvalid, ptw_imem_arready;
     wire [39:0] ptw_imem_araddr;
-    wire        ptw_imem_rready;
+    wire        ptw_imem_rvalid,  ptw_imem_rready;
+    wire [63:0] ptw_imem_rdata;
+    wire [1:0]  ptw_imem_rresp;
     
+    wire        ex_sfence_vma;
+    wire        ex_sfence_asid_en;
+    wire        ex_sfence_va_en;
+    wire [63:0] ex_sfence_va_val;
+    wire [63:0] ex_sfence_asid_val;
+
     rv_mmu u_mmu_fetch (
         .clk(clk), .rst_n(rst_n),
         .satp(ex_satp), .priv_mode(ex_priv_mode),
-        .va_req({24'h0, fe_imem_addr}),
+        .va_req(fe_imem_addr),
         .req_valid(fe_imem_arvalid),
         .req_r(1'b0), .req_w(1'b0), .req_x(1'b1),
         .pa_out(fe_pa), .trans_valid(fe_trans_valid), .trans_busy(fe_trans_busy),
-        .ptw_arvalid(ptw_imem_arvalid), .ptw_arready(1'b0), .ptw_araddr(ptw_imem_araddr),
-        .ptw_rvalid(1'b0), .ptw_rready(ptw_imem_rready), .ptw_rdata(64'h0),
-        .ptw_rresp(2'b00),
-        .sfence_vma(1'b0), .sfence_asid_en(1'b0), .sfence_va_en(1'b0), 
-        .sfence_va_val(64'h0), .sfence_asid_val(64'h0)
+        .page_fault(fe_mmu_page_fault), .fault_va(fe_mmu_fault_va),
+        .ptw_arvalid(ptw_imem_arvalid), .ptw_arready(ptw_imem_arready), .ptw_araddr(ptw_imem_araddr),
+        .ptw_rvalid(ptw_imem_rvalid), .ptw_rready(ptw_imem_rready), .ptw_rdata(ptw_imem_rdata),
+        .ptw_rresp(ptw_imem_rresp),
+        .sfence_vma(ex_sfence_vma), .sfence_asid_en(ex_sfence_asid_en), .sfence_va_en(ex_sfence_va_en), 
+        .sfence_va_val(ex_sfence_va_val), .sfence_asid_val(ex_sfence_asid_val)
     );
 
     // L1 I-Cache & Burst-to-Lite Shim
@@ -219,7 +240,7 @@ module rv_core_top #(
             ) u_icache (
                 .clk        (clk),
                 .rst_n      (rst_n),
-                .cpu_addr   (fe_imem_addr[39:0]),
+                .cpu_addr   (fe_pa),
                 .cpu_req    (icache_req),
                 .cpu_rdata  (icache_cpu_rdata),
                 .cpu_valid  (icache_cpu_valid),
@@ -318,7 +339,7 @@ module rv_core_top #(
     assign fe_imem_rresp   = ENABLE_L1_CACHE ? 2'b00 : imem_rresp;
 
     assign imem_arvalid = ENABLE_L1_CACHE ? ic_out_arvalid : fe_imem_arvalid;
-    assign imem_araddr  = ENABLE_L1_CACHE ? ic_out_araddr  : fe_imem_addr[39:0];
+    assign imem_araddr  = ENABLE_L1_CACHE ? ic_out_araddr  : fe_pa;
     assign imem_arlen   = ENABLE_L1_CACHE ? ic_out_arlen   : 8'h0;
     assign imem_arsize  = ENABLE_L1_CACHE ? ic_out_arsize  : 3'd2;
     assign imem_arburst = ENABLE_L1_CACHE ? ic_out_arburst : 2'b00;
@@ -430,7 +451,11 @@ module rv_core_top #(
         .valid_in     (de_valid),
         .fwd_mem_data (fwd_mem_data), .fwd_mem_valid(fwd_mem_valid), .fwd_mem_rd(fwd_mem_rd),
         .fwd_wb_data  (fwd_wb_data),  .fwd_wb_valid (fwd_wb_valid),  .fwd_wb_rd (fwd_wb_rd),
-        .fpu_result   (64'h0),      .fpu_valid    (1'b0),      .fpu_done(1'b0),
+        .fpu_result   (fpu_res),      .fpu_valid    (fpu_vld),      .fpu_done(fpu_done_sig),
+        .fpu_fflags   (fpu_flags),    .frm_out      (frm_from_csr), .fp_stall(fp_stall),
+        .sfence_vma_pulse(ex_sfence_vma), .sfence_asid_en(ex_sfence_asid_en),
+        .sfence_va_en(ex_sfence_va_en), .sfence_va_val(ex_sfence_va_val),
+        .sfence_asid_val(ex_sfence_asid_val),
         .pc_out       (ex_pc),
         .alu_result   (ex_alures),  .rs2_out      (ex_rs2),
         .rd_out       (ex_rd),      .funct3_out   (ex_f3),     .opcode_out  (ex_op),
@@ -476,9 +501,13 @@ module rv_core_top #(
     // Instantiate D-side MMU
     wire [39:0] mem_pa;
     wire        mem_trans_valid, mem_trans_busy;
-    wire        ptw_dmem_arvalid;
+    wire        mem_mmu_page_fault;
+    wire [63:0] mem_mmu_fault_va;
+    wire        ptw_dmem_arvalid, ptw_dmem_arready;
     wire [39:0] ptw_dmem_araddr;
-    wire        ptw_dmem_rready;
+    wire        ptw_dmem_rvalid,  ptw_dmem_rready;
+    wire [63:0] ptw_dmem_rdata;
+    wire [1:0]  ptw_dmem_rresp;
     
     rv_mmu u_mmu_mem (
         .clk(clk), .rst_n(rst_n),
@@ -487,11 +516,12 @@ module rv_core_top #(
         .req_valid(ex_valid && (ex_memr || ex_memw)),
         .req_r(ex_memr), .req_w(ex_memw), .req_x(1'b0),
         .pa_out(mem_pa), .trans_valid(mem_trans_valid), .trans_busy(mem_trans_busy),
-        .ptw_arvalid(ptw_dmem_arvalid), .ptw_arready(1'b0), .ptw_araddr(ptw_dmem_araddr),
-        .ptw_rvalid(1'b0), .ptw_rready(ptw_dmem_rready), .ptw_rdata(64'h0),
-        .ptw_rresp(2'b00),
-        .sfence_vma(1'b0), .sfence_asid_en(1'b0), .sfence_va_en(1'b0), 
-        .sfence_va_val(64'h0), .sfence_asid_val(64'h0)
+        .page_fault(mem_mmu_page_fault), .fault_va(mem_mmu_fault_va),
+        .ptw_arvalid(ptw_dmem_arvalid), .ptw_arready(ptw_dmem_arready), .ptw_araddr(ptw_dmem_araddr),
+        .ptw_rvalid(ptw_dmem_rvalid), .ptw_rready(ptw_dmem_rready), .ptw_rdata(ptw_dmem_rdata),
+        .ptw_rresp(ptw_dmem_rresp),
+        .sfence_vma(ex_sfence_vma), .sfence_asid_en(ex_sfence_asid_en), .sfence_va_en(ex_sfence_va_en), 
+        .sfence_va_val(ex_sfence_va_val), .sfence_asid_val(ex_sfence_asid_val)
     );
 
     rv_mem u_mem (
@@ -499,6 +529,9 @@ module rv_core_top #(
         .rst_n        (rst_n),
         .flush        (1'b0),
         .alu_result   (ex_alures),
+        .phys_addr    (mem_pa),
+        .mmu_page_fault(mem_mmu_page_fault),
+        .mmu_fault_va (mem_mmu_fault_va),
         .rs2_data     (ex_rs2),
         .rd_in        (ex_rd),
         .funct3       (ex_f3),
@@ -846,6 +879,108 @@ module rv_core_top #(
     assign dc_out_rlast   = dmem_rlast;
     assign dc_out_rresp   = dmem_rresp;
 
+
+    // -------------------------------------------------------
+    // Floating Point Unit (rv_fpu) & 32x64-bit FP Register File
+    // -------------------------------------------------------
+    reg [63:0] fp_rf [0:31];
+    integer fp_i;
+    initial begin
+        for (fp_i = 0; fp_i < 32; fp_i = fp_i + 1)
+            fp_rf[fp_i] = 64'h0;
+    end
+
+    wire [4:0]  fp_rs1_addr = de_rs1a;
+    wire [4:0]  fp_rs2_addr = de_rs2a;
+    wire [4:0]  fp_rs3_addr = de_instr[31:27];
+    wire [63:0] fp_src1     = fp_rf[fp_rs1_addr];
+    wire [63:0] fp_src2     = fp_rf[fp_rs2_addr];
+    wire [63:0] fp_src3     = fp_rf[fp_rs3_addr];
+
+    wire [63:0] fpu_res;
+    wire        fpu_vld;
+    wire [4:0]  fpu_flags;
+    wire        fpu_done_sig;
+    wire [63:0] fpu_int_res;
+    wire        fpu_int_vld;
+    wire [2:0]  frm_from_csr;
+    wire        fp_stall;
+
+    wire is_fp_op = (de_op == `OP_FP)    || (de_op == `OP_FMADD) ||
+                    (de_op == `OP_FMSUB)  || (de_op == `OP_FNMSUB) ||
+                    (de_op == `OP_FNMADD);
+
+    rv_fpu u_fpu (
+        .clk             (clk),
+        .rst_n           (rst_n),
+        .fop             (de_instr[31:27]),
+        .fmt             (de_instr[26:25]),
+        .rm              (de_instr[14:12]),
+        .valid_in        (de_valid && is_fp_op),
+        .fp_src1         (fp_src1),
+        .fp_src2         (fp_src2),
+        .fp_src3         (fp_src3),
+        .int_src         (de_rs1),
+        .frm_csr         (frm_from_csr),
+        .fp_result       (fpu_res),
+        .result_valid    (fpu_vld),
+        .fflags          (fpu_flags),
+        .fpu_done        (fpu_done_sig),
+        .int_result      (fpu_int_res),
+        .int_result_valid(fpu_int_vld)
+    );
+
+    always @(posedge clk) begin
+        if (wb_we && (wb_rd != 5'h0) && (ex_op == `OP_LOAD_FP)) begin
+            fp_rf[wb_rd] <= wb_data;
+        end else if (fpu_vld && (ex_rd != 5'h0) && is_fp_op && !fpu_int_vld) begin
+            fp_rf[ex_rd] <= fpu_res;
+        end
+    end
+
+    // -------------------------------------------------------
+    // Core-level 2-to-1 PTW Arbiter (I-MMU vs D-MMU)
+    // -------------------------------------------------------
+    reg ptw_active_r;
+    reg ptw_grant_d_r;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            ptw_active_r  <= 1'b0;
+            ptw_grant_d_r <= 1'b0;
+        end else begin
+            if (ptw_active_r) begin
+                if (ptw_rvalid && ptw_rready)
+                    ptw_active_r <= 1'b0;
+            end else begin
+                if (ptw_dmem_arvalid) begin
+                    ptw_grant_d_r <= 1'b1;
+                    ptw_active_r  <= 1'b1;
+                end else if (ptw_imem_arvalid) begin
+                    ptw_grant_d_r <= 1'b0;
+                    ptw_active_r  <= 1'b1;
+                end
+            end
+        end
+    end
+
+    wire eff_ptw_d = ptw_active_r ? ptw_grant_d_r : ptw_dmem_arvalid;
+
+    assign ptw_arvalid = ptw_active_r ? (ptw_grant_d_r ? ptw_dmem_arvalid : ptw_imem_arvalid) :
+                                        (ptw_dmem_arvalid || ptw_imem_arvalid);
+    assign ptw_araddr  = eff_ptw_d ? ptw_dmem_araddr : ptw_imem_araddr;
+
+    assign ptw_dmem_arready = eff_ptw_d && ptw_arready;
+    assign ptw_imem_arready = !eff_ptw_d && ptw_arready;
+
+    assign ptw_rready      = eff_ptw_d ? ptw_dmem_rready : ptw_imem_rready;
+    assign ptw_dmem_rvalid = eff_ptw_d ? ptw_rvalid : 1'b0;
+    assign ptw_imem_rvalid = !eff_ptw_d ? ptw_rvalid : 1'b0;
+    assign ptw_dmem_rdata  = ptw_rdata;
+    assign ptw_imem_rdata  = ptw_rdata;
+    assign ptw_dmem_rresp  = ptw_rresp;
+    assign ptw_imem_rresp  = ptw_rresp;
+
     // -------------------------------------------------------
     // Writeback Stage
     // -------------------------------------------------------
@@ -867,7 +1002,7 @@ module rv_core_top #(
     // -------------------------------------------------------
     // Hazard / stall / debug
     // -------------------------------------------------------
-    assign stall = mul_div_stall || mem_stall || halt_req;
+    assign stall = mul_div_stall || mem_stall || halt_req || fe_trans_busy || mem_trans_busy || fp_stall;
     assign stall_ex = mem_stall || halt_req;
 
     // Active snoop acknowledgement for L2 snoop filter

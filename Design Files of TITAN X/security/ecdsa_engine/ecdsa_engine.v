@@ -132,6 +132,7 @@ module ecdsa_engine #(
                 4'h2: key_ram[reg_word[3:0]]  <= pwdata;
                 4'h3: r_ram[reg_word[2:0]]    <= pwdata;
                 4'h4: s_ram[reg_word[2:0]]    <= pwdata;
+                default: ;
             endcase
         end else if (stat_reg[0] && ctrl_reg[0]) begin
             ctrl_reg[0] <= 1'b0; // Auto-clear start

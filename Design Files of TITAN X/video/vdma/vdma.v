@@ -99,6 +99,7 @@ module vdma (
                 8'h34: s2mm_hsize <= pwdata;
                 8'h38: s2mm_stride <= pwdata;
                 8'h3C: s2mm_start_addr[0] <= {8'h0, pwdata};
+                default: ;
             endcase
         end
     end

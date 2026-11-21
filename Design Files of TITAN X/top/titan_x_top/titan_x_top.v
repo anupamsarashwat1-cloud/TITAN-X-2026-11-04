@@ -181,7 +181,7 @@ module titan_x_top #(
     );
     
     // AXI Crossbar Definitions
-    localparam NM = 15;
+    localparam NM = 16;
     localparam NS = 9;
     localparam AW = 40;
     localparam DW = 64;
@@ -331,8 +331,8 @@ module titan_x_top #(
         for (s = 4; s < 9; s = s + 1) begin : gen_unused_axis
             reg s_busy_wr, s_busy_rd;
             reg [3:0] s_id_wr, s_id_rd;
-            always @(posedge clk or negedge rst_n) begin
-                if (!rst_n) begin
+            always @(posedge clk or negedge core_rst_n) begin
+                if (!core_rst_n) begin
                     s_busy_wr <= 1'b0;
                     s_busy_rd <= 1'b0;
                     s_id_wr   <= 4'h0;
@@ -449,6 +449,47 @@ module titan_x_top #(
     wire [4:0]   dbg_hart_halted;
     wire [4:0]   dbg_hart_running;
 
+    // MMU Page Table Walk Arbiter Signals (4 Cores -> MMU Arbiter -> Crossbar Master 15)
+    wire [4:0]   mmu_ptw_arvalid;
+    wire [4:0]   mmu_ptw_arready;
+    wire [199:0] mmu_ptw_araddr;
+    wire [4:0]   mmu_ptw_rvalid;
+    wire [4:0]   mmu_ptw_rready;
+    wire [319:0] mmu_ptw_rdata;
+    wire [9:0]   mmu_ptw_rresp;
+    wire         mmu_l2_arvalid;
+    wire         mmu_l2_arready;
+    wire [39:0]  mmu_l2_araddr;
+    wire         mmu_l2_rvalid;
+    wire         mmu_l2_rready;
+    wire [63:0]  mmu_l2_rdata;
+    wire [1:0]   mmu_l2_rresp;
+
+    // Port 4 tied off (cores 0..3 use ports 0..3)
+    assign mmu_ptw_arvalid[4] = 1'b0;
+    assign mmu_ptw_araddr[4*40 +: 40] = 40'h0;
+    assign mmu_ptw_rready[4] = 1'b1;
+
+    // Crossbar Master 15 interface for MMU Page Table Walker
+    assign axm_awvalid[15] = 1'b0;
+    assign axm_awaddr[15*40 +: 40] = 40'h0;
+    assign axm_awid[15*4 +: 4] = 4'hF;
+    assign axm_wvalid[15] = 1'b0;
+    assign axm_wdata[15*64 +: 64] = 64'h0;
+    assign axm_wstrb[15*8 +: 8] = 8'h0;
+    assign axm_wlast[15] = 1'b0;
+    assign axm_bready[15] = 1'b1;
+
+    assign axm_arvalid[15] = mmu_l2_arvalid;
+    assign axm_araddr[15*40 +: 40] = mmu_l2_araddr;
+    assign axm_arid[15*4 +: 4] = 4'hF;
+    assign axm_rready[15] = mmu_l2_rready;
+
+    assign mmu_l2_arready = axm_arready[15];
+    assign mmu_l2_rvalid  = axm_rvalid[15];
+    assign mmu_l2_rdata   = axm_rdata[15*64 +: 64];
+    assign mmu_l2_rresp   = axm_rresp[15*2 +: 2];
+
     genvar c;
     generate
         for (c = 0; c < 4; c = c + 1) begin : gen_cores
@@ -491,6 +532,10 @@ module titan_x_top #(
                 .dmem_rresp(axm_rresp[(c+4)*2 +: 2]), .dmem_rlast(axm_rlast[c+4]),
                 .snoop_valid(l2_snoop_valid[c]), .snoop_addr(l2_snoop_addr), .snoop_type(l2_snoop_type),
                 .snoop_ack(l2_snoop_ack[c]), .snoop_data_valid(l2_snoop_data_valid[c]), .snoop_data(core_snoop_data[c]),
+                .ptw_arvalid(mmu_ptw_arvalid[c]), .ptw_arready(mmu_ptw_arready[c]),
+                .ptw_araddr(mmu_ptw_araddr[c*40 +: 40]),
+                .ptw_rvalid(mmu_ptw_rvalid[c]), .ptw_rready(mmu_ptw_rready[c]),
+                .ptw_rdata(mmu_ptw_rdata[c*64 +: 64]), .ptw_rresp(mmu_ptw_rresp[c*2 +: 2]),
                 .halt_req(dbg_halt_req[c]), .resume_req(dbg_resume_req[c]),
                 .hart_halted(dbg_hart_halted[c]), .hart_running(dbg_hart_running[c])
             );
@@ -934,21 +979,7 @@ module titan_x_top #(
         .qspi_sclk(qspi_sclk), .qspi_cs_n(qspi_cs_n), .qspi_io(qspi_io)
     );
 
-    // MMU Page Table Walk Arbiter (5 PTWs -> 1 Memory Port)
-    wire [4:0]   mmu_ptw_arvalid = 5'b0;
-    wire [4:0]   mmu_ptw_arready;
-    wire [199:0] mmu_ptw_araddr = 200'b0;
-    wire [4:0]   mmu_ptw_rvalid;
-    wire [4:0]   mmu_ptw_rready = 5'b11111;
-    wire [319:0] mmu_ptw_rdata;
-    wire [9:0]   mmu_ptw_rresp;
-    wire         mmu_l2_arvalid;
-    wire         mmu_l2_arready = 1'b1;
-    wire [39:0]  mmu_l2_araddr;
-    wire         mmu_l2_rvalid = 1'b0;
-    wire         mmu_l2_rready;
-    wire [63:0]  mmu_l2_rdata = 64'b0;
-    wire [1:0]   mmu_l2_rresp = 2'b00;
+    // MMU Page Table Walk Arbiter (Instantiated using wires declared above)
 
     mmu_arbiter #(
         .N(5), .AW(40), .DW(64)

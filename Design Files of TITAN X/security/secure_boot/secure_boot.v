@@ -256,11 +256,7 @@ module secure_boot #(
                     img_sec_version_reg      <= 32'd0;
                     efuse_update_counter_val <= 32'd0;
                     efuse_update_counter_en  <= 1'b0;
-                    if (FAST_SIM) begin
-                        state <= S_SUCCESS;
-                    end else begin
-                        state <= S_READ_HEADER;
-                    end
+                    state                    <= S_READ_HEADER;
                 end
 
                 S_READ_HEADER: begin

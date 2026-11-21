@@ -67,6 +67,7 @@ module mmc_controller #(
             blkattr   <= 32'h0;
             arg1      <= 32'h0;
             trnmod_cmd<= 32'h0;
+            resp_0_1  <= 32'h0;
             pres_state<= 32'h0000_0000;
         end else if (psel && penable && pwrite) begin
             case (paddr[7:0])
@@ -74,6 +75,7 @@ module mmc_controller #(
                 8'h04: blkattr <= pwdata;
                 8'h08: arg1 <= pwdata;
                 8'h0C: trnmod_cmd <= pwdata;
+                default: ;
             endcase
         end
     end

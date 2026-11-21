@@ -67,6 +67,15 @@ module rv_execute #(
     input  wire [63:0] fpu_result,
     input  wire        fpu_valid,
     input  wire        fpu_done,
+    input  wire [4:0]  fpu_fflags,
+    output wire [2:0]  frm_out,
+    output wire        fp_stall,
+    // SFENCE.VMA invalidation to MMUs
+    output wire        sfence_vma_pulse,
+    output wire        sfence_asid_en,
+    output wire        sfence_va_en,
+    output wire [63:0] sfence_va_val,
+    output wire [63:0] sfence_asid_val,
     // To MEM stage
     output reg  [63:0] pc_out,
     output reg  [63:0] alu_result,
@@ -414,7 +423,10 @@ module rv_execute #(
     wire [11:0] csr_a = imm[11:0];
     wire        csr_rmw = (csr_op == 2'b10) || (csr_op == 2'b11);
     // CSRRS/CSRRC with rs1=x0 read only — spec forbids side effects there.
-    wire csr_impl = (csr_a == 12'h300) || // mstatus
+    wire csr_impl = (csr_a == 12'h001) || // fflags
+                    (csr_a == 12'h002) || // frm
+                    (csr_a == 12'h003) || // fcsr
+                    (csr_a == 12'h300) || // mstatus
                     (csr_a == 12'h301) || // misa
                     (csr_a == 12'h302) || // medeleg
                     (csr_a == 12'h303) || // mideleg
@@ -476,7 +488,7 @@ module rv_execute #(
         endcase
     end
     wire branch_misaligned = valid_in && ((branch && branch_cond) || jal || jalr) &&
-                            (jump_branch_target[1:0] != 2'b00);
+                            (jump_branch_target[0] != 1'b0);
 
     // Misaligned load / store address calculation
     wire [63:0] eff_addr = is_amo ? src1 : alu_res_comb;
@@ -494,12 +506,12 @@ module rv_execute #(
     );
 
     wire ex_exit      = valid_in && !stall && !flush &&
-                        !mul_div_stall && !mx_fin;
+                        !mul_div_stall && !fp_stall && !mx_fin;
     wire csr_commit   = ex_exit && is_csr;
     wire mret_commit  = ex_exit && is_mret;
     wire sret_commit  = ex_exit && is_sret;
 
-    wire trap_req_c = (valid_in && !stall && !flush && !mul_div_stall && !mx_fin &&
+    wire trap_req_c = (valid_in && !stall && !flush && !mul_div_stall && !fp_stall && !mx_fin &&
                       (is_ecall || is_ebreak || is_illegal || branch_misaligned ||
                        load_misaligned || store_misaligned || clean_fe_fault_in)) ||
                       clean_mem_fault_in;
@@ -518,9 +530,9 @@ module rv_execute #(
                          irq_m_timer;
 
     wire mret_req_c = valid_in && !stall && !flush &&
-                      !mul_div_stall && !mx_fin && is_mret && priv_mret_ok;
+                      !mul_div_stall && !fp_stall && !mx_fin && is_mret && priv_mret_ok;
     wire sret_req_c = valid_in && !stall && !flush &&
-                      !mul_div_stall && !mx_fin && is_sret && priv_sret_ok;
+                      !mul_div_stall && !fp_stall && !mx_fin && is_sret && priv_sret_ok;
 
     wire irq_take   = ex_exit &&
                       (irq_sel_ext || irq_sel_soft || irq_sel_timer) &&
@@ -605,8 +617,19 @@ module rv_execute #(
         .mideleg_out  (mideleg_w),
         .satp_out     (satp_out),
         .priv_mode_out(priv_mode_out),
-        .irq_pending  (irq_pend)
+        .irq_pending  (irq_pend),
+        .fflags_we    (fpu_done && (|fpu_fflags)),
+        .fflags_in    (fpu_fflags),
+        .frm_out      (frm_out)
     );
+
+
+    assign fp_stall = is_fp_op && !fpu_done;
+    assign sfence_vma_pulse = ex_exit && is_sfence_vma && priv_sfence_ok;
+    assign sfence_asid_en   = (rs2_addr != 5'h0);
+    assign sfence_va_en     = (rs1_addr != 5'h0);
+    assign sfence_va_val    = src1;
+    assign sfence_asid_val  = src2_reg;
 
     wire trap_deleg_s = (priv_mode_out < `PRIV_M) &&
                         (trap_cause_w[63] ? mideleg_w[trap_cause_w[5:0]] : medeleg_w[trap_cause_w[5:0]]);
@@ -627,7 +650,7 @@ module rv_execute #(
         end else if (flush_ex_1 || trap_req_c || mret_req_c || sret_req_c || irq_take) begin
             lr_valid     <= 1'b0;
             sc_success_q <= 1'b0;
-        end else if (!stall && !mul_div_stall && !mx_fin) begin
+        end else if (!stall && !mul_div_stall && !fp_stall && !mx_fin) begin
             if (is_amo && valid_in && (amo_funct5 == `AMO_LR)) begin
                 lr_addr      <= src1;     // LR: address = rs1
                 lr_valid     <= 1'b1;
@@ -697,7 +720,7 @@ module rv_execute #(
             pc_out <= 64'h0;
         end else if (flush_ex_1) begin
             pc_out <= 64'h0;
-        end else if (!stall && !mul_div_stall && !mx_fin) begin
+        end else if (!stall && !mul_div_stall && !fp_stall && !mx_fin) begin
             pc_out <= pc_in;
         end
     end
@@ -708,7 +731,7 @@ module rv_execute #(
             alu_result    <= 64'h0;
         end else if (flush_ex_1) begin
             alu_result    <= 64'h0;
-        end else if (!stall && !mul_div_stall && !mx_fin) begin
+        end else if (!stall && !mul_div_stall && !fp_stall && !mx_fin) begin
             alu_result    <= final_alu_res;
         end else if (mx_done) begin
             alu_result    <= mext_result;
@@ -721,7 +744,7 @@ module rv_execute #(
             rs2_out       <= 64'h0;
         end else if (flush_ex_2) begin
             rs2_out       <= 64'h0;
-        end else if (!stall && !mul_div_stall && !mx_fin) begin
+        end else if (!stall && !mul_div_stall && !fp_stall && !mx_fin) begin
             rs2_out       <= src2_reg;
         end
     end
@@ -732,7 +755,7 @@ module rv_execute #(
             branch_target <= 64'h0;
         end else if (flush_ex_3) begin
             branch_target <= 64'h0;
-        end else if (!stall && !mul_div_stall && !mx_fin) begin
+        end else if (!stall && !mul_div_stall && !fp_stall && !mx_fin) begin
             branch_target <= branch_tgt;
         end
     end
@@ -769,7 +792,7 @@ module rv_execute #(
             trap_pc_out    <= 64'h0;
             trap_cause_out <= 64'h0;
             trap_tval_out  <= 64'h0;
-        end else if (!stall && !mul_div_stall && !mx_fin) begin
+        end else if (!stall && !mul_div_stall && !fp_stall && !mx_fin) begin
             rd_out        <= rd_in;
             funct3_out    <= funct3;
             opcode_out    <= opcode;

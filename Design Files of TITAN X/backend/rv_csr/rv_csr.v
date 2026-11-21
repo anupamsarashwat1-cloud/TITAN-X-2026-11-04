@@ -39,7 +39,11 @@ module rv_csr #(
     output wire [63:0] mideleg_out,
     output wire [63:0] satp_out,
     output reg  [1:0]  priv_mode_out,
-    output wire        irq_pending      // enabled machine/supervisor interrupt waiting
+    output wire        irq_pending,     // enabled machine/supervisor interrupt waiting
+    // FPU CSR interface
+    input  wire        fflags_we,
+    input  wire [4:0]  fflags_in,
+    output wire [2:0]  frm_out
 );
 
     // -------------------------------------------------------
@@ -69,12 +73,16 @@ module rv_csr #(
     reg [63:0] scause_q;
     reg [63:0] stval_q;
     reg [63:0] satp_q;
+    reg [4:0]  fflags_q;
+    reg [2:0]  frm_q;
+    assign frm_out = frm_q;
 
     reg [63:0] mcycle_q, minstret_q;
 
-    // RV64IMASU: Base RV64 (2 << 62) + User (1 << 20) + Supervisor (1 << 18) + M (1 << 12) + I (1 << 8) + A (1 << 0)
-    localparam [63:0] MISA_RV64IM =
-        (64'd2 << 62) | (64'd1 << 20) | (64'd1 << 18) | (64'd1 << 12) | (64'd1 << 8) | (64'd1 << 0);
+    // RV64GC: Base RV64 (2 << 62) + U(20) + S(18) + M(12) + I(8) + F(5) + D(3) + C(2) + A(0)
+    localparam [63:0] MISA_RV64GC =
+        (64'd2 << 62) | (64'd1 << 20) | (64'd1 << 18) | (64'd1 << 12) |
+        (64'd1 << 8)  | (64'd1 << 5)  | (64'd1 << 3)  | (64'd1 << 2)  | (64'd1 << 0);
 
     // -------------------------------------------------------
     // Derived Register Signals
@@ -142,6 +150,9 @@ module rv_csr #(
     // -------------------------------------------------------
     always @(*) begin
         case (csr_raddr)
+            12'h001:    csr_rdata = {59'h0, fflags_q};
+            12'h002:    csr_rdata = {61'h0, frm_q};
+            12'h003:    csr_rdata = {56'h0, frm_q, fflags_q};
             12'h300:    csr_rdata = mstatus_rdata;
             12'h301:    csr_rdata = misa_q;
             12'h302:    csr_rdata = medeleg_q;
@@ -191,7 +202,7 @@ module rv_csr #(
         if (!rst_n) begin
             priv_mode_out   <= `PRIV_M;
             mstatus_q       <= 64'h0000_0000_0000_1800; // MPP defaults to M-mode (2'b11)
-            misa_q          <= MISA_RV64IM;
+            misa_q          <= MISA_RV64GC;
             medeleg_q       <= 64'h0;
             mideleg_q       <= 64'h0;
             mie_q           <= 64'h0;
@@ -212,6 +223,8 @@ module rv_csr #(
             scause_q        <= 64'h0;
             stval_q         <= 64'h0;
             satp_q          <= 64'h0;
+            fflags_q        <= 5'h0;
+            frm_q           <= 3'h0;
             mcycle_q        <= 64'h0;
             minstret_q      <= 64'h0;
         end else begin
@@ -219,10 +232,12 @@ module rv_csr #(
             mcycle_q <= mcycle_q + 64'd1;
             if (retire_pulse)
                 minstret_q <= minstret_q + 64'd1;
+            if (fflags_we)
+                fflags_q <= fflags_q | fflags_in;
 
             if (trap_we) begin
                 if (trap_to_s) begin
-                    sepc_q           <= {trap_pc[63:2], 2'b00};
+                    sepc_q           <= {trap_pc[63:1], 1'b0};
                     scause_q         <= trap_cause;
                     stval_q          <= trap_tval;
                     mstatus_q[5]     <= mstatus_q[1];         // SPIE <- SIE
@@ -230,7 +245,7 @@ module rv_csr #(
                     mstatus_q[8]     <= priv_mode_out[0];     // SPP <- previous priv
                     priv_mode_out    <= `PRIV_S;              // Traps vector to S-mode
                 end else begin
-                    mepc_q           <= {trap_pc[63:2], 2'b00};
+                    mepc_q           <= {trap_pc[63:1], 1'b0};
                     mcause_q         <= trap_cause;
                     mtval_q          <= trap_tval;
                     mstatus_q[7]     <= mstatus_q[3];         // MPIE <- MIE
@@ -250,6 +265,12 @@ module rv_csr #(
                 mstatus_q[8]     <= 1'b0;                 // Reset SPP to User mode
             end else if (csr_we) begin
                 case (csr_waddr)
+                    12'h001: fflags_q <= csr_wdata[4:0];
+                    12'h002: frm_q    <= csr_wdata[2:0];
+                    12'h003: begin
+                        frm_q    <= csr_wdata[7:5];
+                        fflags_q <= csr_wdata[4:0];
+                    end
                     12'h300: begin
                         mstatus_q[1]     <= csr_wdata[1];     // SIE
                         mstatus_q[3]     <= csr_wdata[3];     // MIE
@@ -274,7 +295,7 @@ module rv_csr #(
                     12'h306: mcounteren_q    <= csr_wdata[31:0];
                     12'h320: mcountinhibit_q <= csr_wdata[31:0];
                     12'h340: mscratch_q      <= csr_wdata;
-                    12'h341: mepc_q          <= {csr_wdata[63:2], 2'b00};
+                    12'h341: mepc_q          <= {csr_wdata[63:1], 1'b0};
                     12'h342: mcause_q        <= csr_wdata;
                     12'h343: mtval_q         <= csr_wdata;
                     12'h344: begin
@@ -295,7 +316,7 @@ module rv_csr #(
                     12'h105: stvec_q         <= {csr_wdata[63:2], 2'b00};
                     12'h106: scounteren_q    <= csr_wdata[31:0];
                     12'h140: sscratch_q      <= csr_wdata;
-                    12'h141: sepc_q          <= {csr_wdata[63:2], 2'b00};
+                    12'h141: sepc_q          <= {csr_wdata[63:1], 1'b0};
                     12'h142: scause_q        <= csr_wdata;
                     12'h143: stval_q         <= csr_wdata;
                     12'h144: mip_s_soft_q    <= csr_wdata[1];
@@ -307,10 +328,10 @@ module rv_csr #(
     end
 
     assign mtvec_out   = {mtvec_q[63:2], 2'b00};
-    assign mepc_out    = {mepc_q[63:2], 2'b00};
+    assign mepc_out    = {mepc_q[63:1], 1'b0};
     assign mtval_out   = mtval_q;
     assign stvec_out   = {stvec_q[63:2], 2'b00};
-    assign sepc_out    = {sepc_q[63:2], 2'b00};
+    assign sepc_out    = {sepc_q[63:1], 1'b0};
     assign medeleg_out = medeleg_q;
     assign mideleg_out = mideleg_q;
     assign satp_out    = satp_q;

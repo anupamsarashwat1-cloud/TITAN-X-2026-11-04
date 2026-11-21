@@ -192,6 +192,7 @@ module rv_debug #(
     reg [1:0]  dmi_req_op;
     reg [31:0] dmi_resp_data;
     reg [1:0]  dmi_resp_status;
+    reg [40:0] dmi_sync0, dmi_sync1;
 
     // DMI register map (selected addresses)
     localparam DM_DMCONTROL  = 7'h10;  // Debug Module Control
@@ -252,6 +253,13 @@ module rv_debug #(
             sb_wvalid     <= 1'b0;
             sb_rready     <= 1'b0;
             sb_bready     <= 1'b0;
+            sbaddress     <= 40'h0;
+            dmi_req       <= 1'b0;
+            dmi_req_addr  <= 7'h0;
+            dmi_req_data  <= 32'h0;
+            dmi_req_op    <= 2'h0;
+            dmi_sync0     <= 41'h0;
+            dmi_sync1     <= 41'h0;
             for (pb = 0; pb < PROGBUF_SIZE; pb = pb + 1)
                 progbuf[pb] <= 32'h0000_0013; // NOP
         end else begin
@@ -260,9 +268,20 @@ module rv_debug #(
 
             if (cmd_done) busy <= 1'b0;
 
-            // DMI access handler (simplified — synchronizer omitted for readability)
-            if (dmi_req) begin
+            // TCK->CLK domain crossing: capture dr_capture update
+            dmi_sync0 <= dr_capture;
+            dmi_sync1 <= dmi_sync0;
+            if (dmi_sync1 != dmi_sync0 && dmi_sync0[1:0] != DMI_NOP) begin
+                dmi_req      <= 1'b1;
+                dmi_req_addr <= dmi_sync0[40:34];
+                dmi_req_data <= dmi_sync0[33:2];
+                dmi_req_op   <= dmi_sync0[1:0];
+            end else if (dmi_req) begin
                 dmi_req <= 1'b0;
+            end
+
+            // DMI access handler
+            if (dmi_req) begin
                 case (dmi_req_addr)
                     DM_DMCONTROL: begin
                         if (dmi_req_op == DMI_WRITE) begin
@@ -357,20 +376,6 @@ module rv_debug #(
             if (sb_awready) sb_awvalid <= 1'b0;
             if (sb_wready)  begin sb_wvalid <= 1'b0; end
             if (sb_bvalid)  sb_bready <= 1'b0;
-        end
-    end
-
-    // TCK→CLK domain crossing: capture dr_capture update as a pulse
-    // (Simplified: in production, use a 2-FF synchronizer or async FIFO)
-    reg [40:0] dmi_sync0, dmi_sync1;
-    always @(posedge clk) begin
-        dmi_sync0 <= dr_capture;
-        dmi_sync1 <= dmi_sync0;
-        if (dmi_sync1 != dmi_sync0 && dmi_sync0[1:0] != DMI_NOP) begin
-            dmi_req      <= 1'b1;
-            dmi_req_addr <= dmi_sync0[40:34];
-            dmi_req_data <= dmi_sync0[33:2];
-            dmi_req_op   <= dmi_sync0[1:0];
         end
     end
 

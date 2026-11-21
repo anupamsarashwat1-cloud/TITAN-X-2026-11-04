@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+set -e
+
+echo "=================================================="
+echo "  SMVDU TITAN-X RTL Static Lint Sweep (Verilator)"
+echo "=================================================="
+
+verilator --lint-only -Wall \
+  -Wno-DECLFILENAME \
+  -Wno-PINMISSING \
+  -Wno-PINCONNECTEMPTY \
+  -Wno-VARHIDDEN \
+  -Wno-IMPORTSTAR \
+  -Wno-TIMESCALEMOD \
+  -Wno-EOFNEWLINE \
+  -Irtl/includes \
+  -Irtl/common \
+  -Irtl/top/titan_x_top \
+  rtl/includes/stdcell_stubs.v \
+  rtl/common/sync_cell.v \
+  rtl/common/BUFX4/buf_macros.v \
+  rtl/common/cdc_sync/cdc_sync.v \
+  rtl/common/fifo_sync/fifo_sync.v \
+  rtl/common/fifo_async/fifo_async.v \
+  rtl/common/reset_sync/reset_sync.v \
+  rtl/frontend/rv_bpu/rv_bpu.v \
+  rtl/frontend/rv_fetch/rv_fetch.v \
+  rtl/frontend/rv_decode/rv_c_decoder.v \
+  rtl/frontend/rv_decode/rv_decode.v \
+  rtl/frontend/rv_icache/rv_icache.v \
+  rtl/backend/rv_regfile/rv_regfile.v \
+  rtl/backend/rv_execute/rv_execute.v \
+  rtl/backend/rv_fpu/rv_fpu.v \
+  rtl/backend/rv_csr/rv_csr.v \
+  rtl/backend/rv_mem/rv_mem.v \
+  rtl/backend/rv_writeback/rv_writeback.v \
+  rtl/backend/rv_tlb/rv_tlb.v \
+  rtl/backend/rv_ptw/rv_ptw.v \
+  rtl/backend/rv_pmp/rv_pmp.v \
+  rtl/backend/rv_mmu/rv_mmu.v \
+  rtl/backend/rv_dcache/rv_dcache.v \
+  rtl/backend/clint/clint.v \
+  rtl/backend/plic/plic.v \
+  rtl/backend/rv_debug/rv_debug.v \
+  rtl/backend/rv_monitor_core/rv_monitor_core.v \
+  rtl/backend/rv_core_top/rv_core_top.v \
+  rtl/memory/sram_32x64_180nm/sram_32x64_180nm.v \
+  rtl/memory/sram_512kx8_180nm/sram_512kx8_180nm.v \
+  rtl/memory/l2_tag_array/l2_tag_array.v \
+  rtl/memory/l2_data_array/l2_data_array.v \
+  rtl/memory/l2_snoop_filter/l2_snoop_filter.v \
+  rtl/memory/l2_cache_ctrl/l2_cache_ctrl.v \
+  rtl/memory/l2_cache_top/l2_cache_top.v \
+  rtl/memory/ddr_scheduler/ddr_scheduler.v \
+  rtl/memory/ddr_phy_if/ddr_phy_if.v \
+  rtl/memory/ddr_ctrl_top/ddr_ctrl_top.v \
+  rtl/memory/mbist/mbist_controller.v \
+  rtl/interconnect/axi4_burst_to_lite.v \
+  rtl/interconnect/interconnect_mpu/mpu.v \
+  rtl/interconnect/mmu_arbiter/mmu_arbiter.v \
+  rtl/interconnect/qos_controller/qos_controller.v \
+  rtl/interconnect/ahb_to_apb/ahb_to_apb.v \
+  rtl/interconnect/apb_bridge/apb_bridge.v \
+  rtl/interconnect/axi4_to_ahb/axi4_to_ahb.v \
+  rtl/interconnect/axi4_crossbar/axi4_crossbar.v \
+  rtl/peripherals/gpio_ctrl/gpio_ctrl.v \
+  rtl/peripherals/rtc/rtc.v \
+  rtl/peripherals/watchdog_timer/watchdog_timer.v \
+  rtl/peripherals/uart_16550/uart_16550.v \
+  rtl/peripherals/spi_master/spi_master.v \
+  rtl/peripherals/i2c_master/i2c_master.v \
+  rtl/peripherals/can_controller/can_controller.v \
+  rtl/peripherals/trng/trng.v \
+  rtl/peripherals/sha256_engine/sha256_engine.v \
+  rtl/peripherals/aes_engine/aes_engine.v \
+  rtl/peripherals/gem_sgmii_pcs/gem_sgmii_pcs.v \
+  rtl/peripherals/gem_ethernet/gem_ethernet.v \
+  rtl/peripherals/pcie_pipe_if/pcie_pipe_if.v \
+  rtl/peripherals/pcie_top/pcie_top.v \
+  rtl/security/drbg/drbg.v \
+  rtl/security/ecdsa_engine/ecdsa_engine.v \
+  rtl/security/envm_ctrl/envm_ctrl.v \
+  rtl/security/efuse_ctrl/efuse_ctrl.v \
+  rtl/security/secure_boot/secure_boot.v \
+  rtl/storage/usb_otg/usb_otg.v \
+  rtl/storage/mmc_controller/mmc_controller.v \
+  rtl/storage/qspi_controller/qspi_controller.v \
+  rtl/video/mipi_csi2_rx/mipi_csi2_rx.v \
+  rtl/video/isp_pipeline/isp_pipeline.v \
+  rtl/video/vdma/vdma.v \
+  rtl/video/hdmi_ctrl/hdmi_ctrl.v \
+  rtl/top/axi_rom/axi_rom.v \
+  rtl/top/axi_sram/axi_sram.v \
+  rtl/top/titan_x_top/titan_x_top.v \
+  --top-module titan_x_top
+
+echo "=================================================="
+echo "  VERILATOR LINT CHECK PASSED CLEANLY!            "
+echo "=================================================="

@@ -20,6 +20,10 @@ module rv_mem (
     input  wire        is_amo,
     input  wire [4:0]  amo_funct5,
     input  wire        valid_in,
+    // Physical address from MMU and Page Fault inputs
+    input  wire [39:0] phys_addr,
+    input  wire        mmu_page_fault,
+    input  wire [63:0] mmu_fault_va,
     // Data memory AXI4-Lite master
     output reg         dmem_awvalid,
     input  wire        dmem_awready,
@@ -72,6 +76,7 @@ module rv_mem (
 
     reg [31:0] amo_old_32, amo_new_32;
     reg [63:0] amo_old_64, amo_new_64;
+    wire [39:0] eff_mem_addr = (phys_addr != 40'h0 || alu_result[39:0] == 40'h0) ? phys_addr : alu_result[39:0];
 
     wire [1:0]  clean_bresp = dmem_bresp;
     wire [1:0]  clean_rresp = dmem_rresp;
@@ -199,11 +204,20 @@ module rv_mem (
             case (mstate)
                 MS_IDLE: begin
                     mem_fault <= 1'b0;
-                    if (valid_in && is_amo) begin
+                    if (valid_in && (mem_read || mem_write || is_amo) && mmu_page_fault) begin
+                        mem_fault       <= 1'b1;
+                        mem_fault_pc    <= clean_pc_in;
+                        mem_fault_cause <= mem_read ? 64'd13 : 64'd15; // 13=Load page fault, 15=Store/AMO page fault
+                        mem_fault_tval  <= mmu_fault_va;
+                        valid_out       <= 1'b0;
+                        reg_write_out   <= 1'b0;
+                        mem_active      <= 1'b0;
+                        mstate          <= MS_IDLE;
+                    end else if (valid_in && is_amo) begin
                         if (amo_funct5 == `AMO_LR) begin
                             // LR: Load Reserved
                             dmem_arvalid  <= 1'b1;
-                            dmem_araddr   <= alu_result[39:0];
+                            dmem_araddr   <= eff_mem_addr;
                             pc_q          <= clean_pc_in;
                             dmem_rready   <= 1'b1;
                             mem_active    <= 1'b1;
@@ -212,15 +226,15 @@ module rv_mem (
                             reg_write_out <= reg_write;
                             valid_out     <= 1'b0;
                             lr_valid      <= 1'b1;
-                            lr_addr       <= alu_result[39:0];
+                            lr_addr       <= eff_mem_addr;
                             is_sc_q       <= 1'b0;
                         end else if (amo_funct5 == `AMO_SC) begin
                             // SC: Store Conditional
-                            if (lr_valid && (lr_addr[39:3] == alu_result[39:3])) begin
+                            if (lr_valid && (lr_addr[39:3] == eff_mem_addr[39:3])) begin
                                 lr_valid      <= 1'b0;
                                 dmem_awvalid  <= 1'b1;
-                                dmem_awaddr   <= alu_result[39:0];
-                                store_addr_q  <= alu_result[39:0];
+                                dmem_awaddr   <= eff_mem_addr;
+                                store_addr_q  <= eff_mem_addr;
                                 pc_q          <= clean_pc_in;
                                 dmem_wvalid   <= 1'b1;
                                 dmem_wdata    <= rs2_data << {alu_result[2:0], 3'b000};
@@ -246,8 +260,8 @@ module rv_mem (
                         end else begin
                             // Read-Modify-Write AMO (AMOADD, AMOSWAP, etc.)
                             dmem_arvalid  <= 1'b1;
-                            dmem_araddr   <= alu_result[39:0];
-                            store_addr_q  <= alu_result[39:0];
+                            dmem_araddr   <= eff_mem_addr;
+                            store_addr_q  <= eff_mem_addr;
                             pc_q          <= clean_pc_in;
                             dmem_rready   <= 1'b1;
                             mem_active    <= 1'b1;
@@ -259,8 +273,8 @@ module rv_mem (
                         end
                     end else if (valid_in && mem_write) begin
                         dmem_awvalid  <= 1'b1;
-                        dmem_awaddr   <= alu_result[39:0];
-                        store_addr_q  <= alu_result[39:0];
+                        dmem_awaddr   <= eff_mem_addr;
+                        store_addr_q  <= eff_mem_addr;
                         pc_q          <= clean_pc_in;
                         dmem_wvalid   <= 1'b1;
                         dmem_wdata    <= rs2_data
@@ -277,7 +291,7 @@ module rv_mem (
                         is_sc_q       <= 1'b0;
                     end else if (valid_in && mem_read) begin
                         dmem_arvalid  <= 1'b1;
-                        dmem_araddr   <= alu_result[39:0];
+                        dmem_araddr   <= eff_mem_addr;
                         pc_q          <= clean_pc_in;
                         dmem_rready   <= 1'b1;
                         mem_active    <= 1'b1;

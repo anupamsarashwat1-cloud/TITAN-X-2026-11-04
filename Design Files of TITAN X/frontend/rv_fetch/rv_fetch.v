@@ -12,7 +12,8 @@
 
 module rv_fetch #(
     parameter RESET_PC     = `RESET_PC,
-    parameter ENABLE_DRAIN = 1
+    parameter ENABLE_DRAIN = 1,
+    parameter ENABLE_RVC   = 0
 ) (
     input  wire        clk,
     input  wire        rst_n,
@@ -38,6 +39,8 @@ module rv_fetch #(
     output reg  [63:0] fault_tval_out
 );
     reg [63:0] pc;
+    reg [15:0] half_buf;
+    reg        half_buf_valid;
 
     // Fetch FSM
     localparam F_REQ   = 2'd1;
@@ -61,9 +64,9 @@ module rv_fetch #(
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            pc           <= RESET_PC;
-            imem_addr    <= RESET_PC;
-            imem_arvalid <= 1'b0;
+            pc              <= RESET_PC;
+            imem_addr       <= RESET_PC;
+            imem_arvalid    <= 1'b0;
             pc_out          <= 64'h0;
             instr_out       <= 32'h0000_0013; // NOP
             valid_out       <= 1'b0;
@@ -72,49 +75,40 @@ module rv_fetch #(
             fault_tval_out  <= 64'h0;
             fstate          <= F_REQ;
             pending_r       <= 1'b0;
+            half_buf        <= 16'h0;
+            half_buf_valid  <= 1'b0;
         end else begin
             case (fstate)
                 F_REQ: begin
-                    // Redirect windows are not just F_WAIT's problem: a
-                    // branch resolving in the cycle RIGHT AFTER a delivery
-                    // finds us here, with the sequential next address about
-                    // to be (or just being) requested. Honoring it only in
-                    // F_WAIT let one wrong-path instruction through whenever
-                    // resolution landed in this window. Nothing is
-                    // outstanding in F_REQ (pending_r cleared on entry), so
-                    // the fix is simply aiming the next fetch at the target.
-                    // Redirect outranks stall: the wrong-path beat is dead
-                    // either way once the front-end is flushed.
                     if (redirect) begin
                         valid_out       <= 1'b0;
                         fault_out       <= 1'b0;
                         fault_cause_out <= 64'h0;
                         fault_tval_out  <= 64'h0;
+                        half_buf_valid  <= 1'b0;
                         pc              <= branch_target;
-                        imem_addr       <= branch_target;
+                        imem_addr       <= ENABLE_RVC ? {branch_target[63:2], 2'b00} : branch_target;
                         imem_arvalid    <= 1'b1;
                         fstate          <= F_WAIT;
                     end else if (!stall) begin
-                    // Refill-gap valid discipline. valid_out was set for
-                    // exactly the one delivery cycle; it must drop so decode
-                    // cannot re-latch the SAME instruction once per refill
-                    // cycle (the every-instruction-executes-thrice bug).
-                    // BUT the drop is conditional on actual consumption:
-                    // if the pipe stalled during the delivery cycle, decode
-                    // froze before taking the beat — clearing valid here
-                    // made the instruction evaporate the moment the stall
-                    // released (every other store/load follower vanished).
-                    // Producer rule: hold VALID until the consumer takes it.
                         valid_out       <= 1'b0;
                         fault_out       <= 1'b0;
                         fault_cause_out <= 64'h0;
                         fault_tval_out  <= 64'h0;
-                        imem_addr       <= pc;
-                        imem_arvalid    <= 1'b1;
-                        fstate          <= F_WAIT;
+                        if (ENABLE_RVC && half_buf_valid && (half_buf[1:0] != 2'b11)) begin
+                            // Fast path: consume the buffered 16-bit compressed instruction directly
+                            pc_out          <= pc;
+                            instr_out       <= {16'h0000, half_buf};
+                            valid_out       <= 1'b1;
+                            pc              <= pc + 64'd2;
+                            half_buf_valid  <= 1'b0;
+                            fstate          <= F_REQ;
+                        end else begin
+                            imem_addr       <= ENABLE_RVC ? ({pc[63:2], 2'b00} + (half_buf_valid ? 64'd4 : 64'd0)) : pc;
+                            imem_arvalid    <= 1'b1;
+                            fstate          <= F_WAIT;
+                        end
                     end
-                    // else: hold {pc_out, instr_out, valid_out} intact —
-                    // decode is frozen and will consume on release.
                 end
                 F_WAIT: begin
                     // Track AR completion for the outstanding request
@@ -127,24 +121,14 @@ module rv_fetch #(
                         fault_out       <= 1'b0;
                         fault_cause_out <= 64'h0;
                         fault_tval_out  <= 64'h0;
+                        half_buf_valid  <= 1'b0;
                         pc              <= branch_target;
-                        // An orphan survives this edge if an AR is still
-                        // unaccepted (its address must stay stable — AXI
-                        // forbids swapping ARADDR under held ARVALID) or a
-                        // fetched beat is still owed after this edge's
-                        // consumption. Only a truly clean line may issue
-                        // the redirected fetch immediately; anything else
-                        // drains through F_FLUSH first. This closes the
-                        // redirect-vs-AR-acceptance same-edge race where
-                        // the orphan beat would be paired with the new PC.
                         if (ENABLE_DRAIN && ((imem_arvalid && !ar_fire) ||
                             ((pending_r || ar_fire) && !r_fire)))
                             fstate <= F_FLUSH;
                         else begin
-                            // Beat (if any) consumed this very edge —
-                            // refetch the target immediately.
                             pending_r    <= 1'b0;
-                            imem_addr    <= branch_target;
+                            imem_addr    <= ENABLE_RVC ? {branch_target[63:2], 2'b00} : branch_target;
                             imem_arvalid <= 1'b1;
                             fstate       <= F_WAIT;
                         end
@@ -156,16 +140,79 @@ module rv_fetch #(
                             fault_out       <= 1'b1;
                             fault_cause_out <= 64'd1;         // Instruction access fault
                             fault_tval_out  <= pc;
+                            pc              <= pc + 64'd4;
+                            half_buf_valid  <= 1'b0;
+                            pending_r       <= 1'b0;
+                            fstate          <= F_REQ;
+                        end else if (ENABLE_RVC && half_buf_valid) begin
+                            // Spanning 32-bit instruction: lower half from buffer, upper half from imem_rdata[15:0]
+                            instr_out       <= {imem_rdata[15:0], half_buf};
+                            valid_out       <= 1'b1;
+                            fault_out       <= 1'b0;
+                            fault_cause_out <= 64'h0;
+                            fault_tval_out  <= 64'h0;
+                            pc              <= pc + 64'd4;
+                            half_buf        <= imem_rdata[31:16];
+                            half_buf_valid  <= 1'b1;
+                            pending_r       <= 1'b0;
+                            fstate          <= F_REQ;
+                        end else if (ENABLE_RVC && (pc[1] == 1'b0)) begin
+                            if (imem_rdata[1:0] != 2'b11) begin
+                                // 16-bit compressed instruction at word lower half
+                                instr_out       <= {16'h0000, imem_rdata[15:0]};
+                                valid_out       <= 1'b1;
+                                fault_out       <= 1'b0;
+                                fault_cause_out <= 64'h0;
+                                fault_tval_out  <= 64'h0;
+                                pc              <= pc + 64'd2;
+                                half_buf        <= imem_rdata[31:16];
+                                half_buf_valid  <= 1'b1;
+                            end else begin
+                                // 32-bit regular instruction
+                                instr_out       <= imem_rdata;
+                                valid_out       <= 1'b1;
+                                fault_out       <= 1'b0;
+                                fault_cause_out <= 64'h0;
+                                fault_tval_out  <= 64'h0;
+                                pc              <= pc + 64'd4;
+                                half_buf_valid  <= 1'b0;
+                            end
+                            pending_r <= 1'b0;
+                            fstate    <= F_REQ;
+                        end else if (ENABLE_RVC && (pc[1] == 1'b1)) begin
+                            // pc[1] == 1'b1: instruction begins at imem_rdata[31:16]
+                            if (imem_rdata[17:16] != 2'b11) begin
+                                // 16-bit compressed instruction at upper half
+                                instr_out       <= {16'h0000, imem_rdata[31:16]};
+                                valid_out       <= 1'b1;
+                                fault_out       <= 1'b0;
+                                fault_cause_out <= 64'h0;
+                                fault_tval_out  <= 64'h0;
+                                pc              <= pc + 64'd2;
+                                half_buf_valid  <= 1'b0;
+                                pending_r       <= 1'b0;
+                                fstate          <= F_REQ;
+                            end else begin
+                                // 32-bit uncompressed instruction starting at upper half: buffer and fetch next word
+                                half_buf        <= imem_rdata[31:16];
+                                half_buf_valid  <= 1'b1;
+                                imem_addr       <= {pc[63:2], 2'b00} + 64'd4;
+                                imem_arvalid    <= 1'b1;
+                                pending_r       <= 1'b0;
+                                // Remain in F_WAIT for next word
+                            end
                         end else begin
+                            // Standard uncompressed fetch (ENABLE_RVC == 0)
                             instr_out       <= imem_rdata;
                             valid_out       <= 1'b1;
                             fault_out       <= 1'b0;
                             fault_cause_out <= 64'h0;
                             fault_tval_out  <= 64'h0;
+                            pc              <= pc + 64'd4;
+                            half_buf_valid  <= 1'b0;
+                            pending_r       <= 1'b0;
+                            fstate          <= F_REQ;
                         end
-                        pc        <= pc + 64'd4;
-                        pending_r <= 1'b0;
-                        fstate    <= F_REQ;
                     end
                 end
                 F_FLUSH: begin
@@ -173,11 +220,12 @@ module rv_fetch #(
                     fault_out       <= 1'b0;
                     fault_cause_out <= 64'h0;
                     fault_tval_out  <= 64'h0;
+                    half_buf_valid  <= 1'b0;
                     // Latest target wins if another redirect arrives mid-drain.
                     if (redirect) begin
                         pc <= branch_target;
                         if (!ENABLE_DRAIN) begin
-                            imem_addr    <= branch_target;
+                            imem_addr    <= ENABLE_RVC ? {branch_target[63:2], 2'b00} : branch_target;
                             imem_arvalid <= 1'b1;
                             pending_r    <= 1'b0;
                             fstate       <= F_WAIT;
@@ -194,7 +242,7 @@ module rv_fetch #(
                         if (r_fire)
                             pending_r <= 1'b0;    // orphan swallowed
                     end else begin
-                        imem_addr    <= pc;
+                        imem_addr    <= ENABLE_RVC ? {pc[63:2], 2'b00} : pc;
                         imem_arvalid <= 1'b1;
                         fstate       <= F_WAIT;
                     end

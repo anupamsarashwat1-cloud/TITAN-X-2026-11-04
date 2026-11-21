@@ -1,0 +1,101 @@
+# Yosys Hierarchy Check Script for SMVDU-TITAN-X Top Level
+# Phase 1: Synthesizability and Hierarchy Verification
+
+# Includes and Common Cells
+read_verilog -Irtl/includes -Irtl/common rtl/includes/stdcell_stubs.v
+read_verilog -Irtl/includes -Irtl/common rtl/common/sync_cell.v
+read_verilog -Irtl/includes -Irtl/common rtl/common/BUFX4/buf_macros.v
+read_verilog -Irtl/includes -Irtl/common rtl/common/cdc_sync/cdc_sync.v
+read_verilog -Irtl/includes -Irtl/common rtl/common/fifo_sync/fifo_sync.v
+read_verilog -Irtl/includes -Irtl/common rtl/common/fifo_async/fifo_async.v
+read_verilog -Irtl/includes -Irtl/common rtl/common/reset_sync/reset_sync.v
+
+# Frontend
+read_verilog -Irtl/includes rtl/frontend/rv_bpu/rv_bpu.v
+read_verilog -Irtl/includes rtl/frontend/rv_fetch/rv_fetch.v
+read_verilog -Irtl/includes rtl/frontend/rv_decode/rv_c_decoder.v
+read_verilog -Irtl/includes rtl/frontend/rv_decode/rv_decode.v
+read_verilog -Irtl/includes rtl/frontend/rv_icache/rv_icache.v
+
+# Backend
+read_verilog -Irtl/includes rtl/backend/rv_regfile/rv_regfile.v
+read_verilog -Irtl/includes rtl/backend/rv_execute/rv_execute.v
+read_verilog -Irtl/includes rtl/backend/rv_fpu/rv_fpu.v
+read_verilog -Irtl/includes rtl/backend/rv_csr/rv_csr.v
+read_verilog -Irtl/includes rtl/backend/rv_mem/rv_mem.v
+read_verilog -Irtl/includes rtl/backend/rv_writeback/rv_writeback.v
+read_verilog -Irtl/includes rtl/backend/rv_tlb/rv_tlb.v
+read_verilog -Irtl/includes rtl/backend/rv_ptw/rv_ptw.v
+read_verilog -Irtl/includes rtl/backend/rv_pmp/rv_pmp.v
+read_verilog -Irtl/includes rtl/backend/rv_mmu/rv_mmu.v
+read_verilog -Irtl/includes rtl/backend/rv_dcache/rv_dcache.v
+read_verilog -Irtl/includes rtl/backend/clint/clint.v
+read_verilog -Irtl/includes rtl/backend/plic/plic.v
+read_verilog -Irtl/includes rtl/backend/rv_debug/rv_debug.v
+read_verilog -Irtl/includes rtl/backend/rv_monitor_core/rv_monitor_core.v
+read_verilog -Irtl/includes rtl/backend/rv_core_top/rv_core_top.v
+
+# Memory & Caches
+read_verilog -Irtl/includes rtl/memory/sram_32x64_180nm/sram_32x64_180nm.v
+read_verilog -Irtl/includes rtl/memory/sram_512kx8_180nm/sram_512kx8_180nm.v
+read_verilog -Irtl/includes rtl/memory/l2_tag_array/l2_tag_array.v
+read_verilog -Irtl/includes rtl/memory/l2_data_array/l2_data_array.v
+read_verilog -Irtl/includes rtl/memory/l2_snoop_filter/l2_snoop_filter.v
+read_verilog -Irtl/includes rtl/memory/l2_cache_ctrl/l2_cache_ctrl.v
+read_verilog -Irtl/includes rtl/memory/l2_cache_top/l2_cache_top.v
+read_verilog -Irtl/includes rtl/memory/ddr_scheduler/ddr_scheduler.v
+read_verilog -Irtl/includes rtl/memory/ddr_phy_if/ddr_phy_if.v
+read_verilog -Irtl/includes rtl/memory/ddr_ctrl_top/ddr_ctrl_top.v
+read_verilog -Irtl/includes rtl/memory/mbist/mbist_controller.v
+
+# Interconnect
+read_verilog -Irtl/includes rtl/interconnect/axi4_burst_to_lite.v
+read_verilog -Irtl/includes rtl/interconnect/interconnect_mpu/mpu.v
+read_verilog -Irtl/includes rtl/interconnect/mmu_arbiter/mmu_arbiter.v
+read_verilog -Irtl/includes rtl/interconnect/qos_controller/qos_controller.v
+read_verilog -Irtl/includes rtl/interconnect/ahb_to_apb/ahb_to_apb.v
+read_verilog -Irtl/includes rtl/interconnect/apb_bridge/apb_bridge.v
+read_verilog -Irtl/includes rtl/interconnect/axi4_to_ahb/axi4_to_ahb.v
+read_verilog -Irtl/includes rtl/interconnect/axi4_crossbar/axi4_crossbar.v
+
+# Peripherals
+read_verilog -Irtl/includes rtl/peripherals/gpio_ctrl/gpio_ctrl.v
+read_verilog -Irtl/includes rtl/peripherals/rtc/rtc.v
+read_verilog -Irtl/includes rtl/peripherals/watchdog_timer/watchdog_timer.v
+read_verilog -Irtl/includes rtl/peripherals/uart_16550/uart_16550.v
+read_verilog -Irtl/includes rtl/peripherals/spi_master/spi_master.v
+read_verilog -Irtl/includes rtl/peripherals/i2c_master/i2c_master.v
+read_verilog -Irtl/includes rtl/peripherals/can_controller/can_controller.v
+read_verilog -Irtl/includes rtl/peripherals/trng/trng.v
+read_verilog -Irtl/includes rtl/peripherals/sha256_engine/sha256_engine.v
+read_verilog -Irtl/includes rtl/peripherals/aes_engine/aes_engine.v
+read_verilog -Irtl/includes rtl/peripherals/gem_sgmii_pcs/gem_sgmii_pcs.v
+read_verilog -Irtl/includes rtl/peripherals/gem_ethernet/gem_ethernet.v
+read_verilog -Irtl/includes rtl/peripherals/pcie_pipe_if/pcie_pipe_if.v
+read_verilog -Irtl/includes rtl/peripherals/pcie_top/pcie_top.v
+
+# Security
+read_verilog -Irtl/includes rtl/security/drbg/drbg.v
+read_verilog -Irtl/includes rtl/security/ecdsa_engine/ecdsa_engine.v
+read_verilog -Irtl/includes rtl/security/envm_ctrl/envm_ctrl.v
+read_verilog -Irtl/includes rtl/security/efuse_ctrl/efuse_ctrl.v
+read_verilog -Irtl/includes rtl/security/secure_boot/secure_boot.v
+
+# Storage
+read_verilog -Irtl/includes rtl/storage/usb_otg/usb_otg.v
+read_verilog -Irtl/includes rtl/storage/mmc_controller/mmc_controller.v
+read_verilog -Irtl/includes rtl/storage/qspi_controller/qspi_controller.v
+
+# Video
+read_verilog -Irtl/includes rtl/video/mipi_csi2_rx/mipi_csi2_rx.v
+read_verilog -Irtl/includes rtl/video/isp_pipeline/isp_pipeline.v
+read_verilog -Irtl/includes rtl/video/vdma/vdma.v
+read_verilog -Irtl/includes rtl/video/hdmi_ctrl/hdmi_ctrl.v
+
+# Top-Level Memories & SoC
+read_verilog -Irtl/includes rtl/top/axi_rom/axi_rom.v
+read_verilog -Irtl/includes rtl/top/axi_sram/axi_sram.v
+read_verilog -Irtl/includes rtl/top/titan_x_top/titan_x_top.v
+
+# Check Elaborated Hierarchy
+hierarchy -check -top titan_x_top
